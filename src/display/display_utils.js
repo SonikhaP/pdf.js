@@ -338,82 +338,31 @@ function getPdfFilenameFromUrl(url, defaultFilename = "document.pdf") {
     warn('getPdfFilenameFromUrl: ignore "data:"-URL for performance reasons.');
     return defaultFilename;
   }
-
-  const getURL = urlString => {
-    try {
-      return new URL(urlString);
-    } catch {
+  const reURI = /^(?:(?:[^:]+:)?\/\/[^/]+)?([^?#]*)(\?[^#]*)?(#.*)?$/;
+  //              SCHEME        HOST        1.PATH  2.QUERY   3.REF
+  // Pattern to get last matching NAME.pdf
+  const reFilename = /[^/?#=]+\.pdf\b(?!.*\.pdf\b)/i;
+  const splitURI = reURI.exec(url);
+  let suggestedFilename =
+    reFilename.exec(splitURI[1]) ||
+    reFilename.exec(splitURI[2]) ||
+    reFilename.exec(splitURI[3]);
+  if (suggestedFilename) {
+    suggestedFilename = suggestedFilename[0];
+    if (suggestedFilename.includes("%")) {
+      // URL-encoded %2Fpath%2Fto%2Ffile.pdf should be file.pdf
       try {
-        return new URL(decodeURIComponent(urlString));
+        suggestedFilename = reFilename.exec(
+          decodeURIComponent(suggestedFilename)
+        )[0];
       } catch {
-        try {
-          // Attempt to parse the URL using the document's base URI.
-          return new URL(urlString, "https://foo.bar");
-        } catch {
-          try {
-            return new URL(decodeURIComponent(urlString), "https://foo.bar");
-          } catch {
-            return null;
-          }
-        }
-      }
-    }
-  };
-
-  const newURL = getURL(url);
-  if (!newURL) {
-    // If the URL is invalid, return the default filename.
-    return defaultFilename;
-  }
-
-  const decode = name => {
-    try {
-      let decoded = decodeURIComponent(name);
-      if (decoded.includes("/")) {
-        decoded = decoded.split("/").at(-1);
-        if (decoded.test(/^\.pdf$/i)) {
-          return decoded;
-        }
-        return name;
-      }
-      return decoded;
-    } catch {
-      return name;
-    }
-  };
-
-  const pdfRegex = /\.pdf$/i;
-  const filename = newURL.pathname.split("/").at(-1);
-  if (pdfRegex.test(filename)) {
-    return decode(filename);
-  }
-
-  if (newURL.searchParams.size > 0) {
-    const values = Array.from(newURL.searchParams.values()).reverse();
-    for (const value of values) {
-      if (pdfRegex.test(value)) {
-        // If any of the search parameters ends with ".pdf", return it.
-        return decode(value);
-      }
-    }
-    const keys = Array.from(newURL.searchParams.keys()).reverse();
-    for (const key of keys) {
-      if (pdfRegex.test(key)) {
-        // If any of the search parameter keys ends with ".pdf", return it.
-        return decode(key);
+        // Possible (extremely rare) errors:
+        // URIError "Malformed URI", e.g. for "%AA.pdf"
+        // TypeError "null has no properties", e.g. for "%2F.pdf"
       }
     }
   }
-
-  if (newURL.hash) {
-    const reFilename = /[^/?#=]+\.pdf\b(?!.*\.pdf\b)/i;
-    const hashFilename = reFilename.exec(newURL.hash);
-    if (hashFilename) {
-      return decode(hashFilename[0]);
-    }
-  }
-
-  return defaultFilename;
+  return suggestedFilename || defaultFilename;
 }
 
 class StatTimer {
@@ -502,9 +451,6 @@ class PDFDateString {
    * @returns {Date|null}
    */
   static toDateObject(input) {
-    if (input instanceof Date) {
-      return input;
-    }
     if (!input || typeof input !== "string") {
       return null;
     }
@@ -770,41 +716,7 @@ const SupportedImageMimeTypes = [
   "image/x-icon",
 ];
 
-function changeLightness(r, g, b, lumCallback = l => (1 + Math.sqrt(l)) / 2) {
-  r /= 255;
-  g /= 255;
-  b /= 255;
-
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  const newL = (lumCallback(l) * 100).toFixed(2);
-
-  if (max === min) {
-    // gray
-    return `hsl(0, 0%, ${newL}%)`;
-  }
-
-  const d = max - min;
-
-  // hue (branch on max only; avoids mod)
-  let h;
-  if (max === r) {
-    h = (g - b) / d + (g < b ? 6 : 0);
-  } else if (max === g) {
-    h = (b - r) / d + 2;
-  } else {
-    // max === b
-    h = (r - g) / d + 4;
-  }
-  h = (h * 60).toFixed(2);
-  const s = ((d / (1 - Math.abs(2 * l - 1))) * 100).toFixed(2);
-
-  return `hsl(${h}, ${s}%, ${newL}%)`;
-}
-
 export {
-  changeLightness,
   deprecated,
   fetchData,
   getColorValues,

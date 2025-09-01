@@ -676,8 +676,9 @@ describe("Scripting", function () {
           );
         };
 
-        await check("05", "dd", "2000/01/05");
-        await check("12", "mm", "2000/12/01");
+        const year = new Date().getFullYear();
+        await check("05", "dd", `${year}/01/05`);
+        await check("12", "mm", `${year}/12/01`);
         await check("2022", "yyyy", "2022/01/01");
         await check("a1$9bbbb21", "dd/mm/yyyy", "2021/09/01");
         await check("1/2/2024", "dd/mm/yyyy", "2024/02/01");
@@ -1064,8 +1065,8 @@ describe("Scripting", function () {
                 id: refId,
                 value: "",
                 actions: {
-                  Format: [`AFDate_FormatEx("mm.dd.yyyy");`],
-                  Keystroke: [`AFDate_KeystrokeEx("mm.dd.yyyy");`],
+                  Format: [`AFDate_FormatEx("mmddyyyy");`],
+                  Keystroke: [`AFDate_KeystrokeEx("mmddyyyy");`],
                 },
                 type: "text",
               },
@@ -1079,7 +1080,7 @@ describe("Scripting", function () {
         sandbox.createSandbox(data);
         await sandbox.dispatchEventInSandbox({
           id: refId,
-          value: "12.06.2023",
+          value: "12062023",
           name: "Keystroke",
           willCommit: true,
         });
@@ -1087,14 +1088,14 @@ describe("Scripting", function () {
         expect(send_queue.get(refId)).toEqual({
           id: refId,
           siblings: null,
-          value: "12.06.2023",
-          formattedValue: "12.06.2023",
+          value: "12062023",
+          formattedValue: "12062023",
         });
         send_queue.delete(refId);
 
         await sandbox.dispatchEventInSandbox({
           id: refId,
-          value: "12.06.202",
+          value: "1206202",
           name: "Keystroke",
           willCommit: true,
         });
@@ -1102,31 +1103,16 @@ describe("Scripting", function () {
         expect(send_queue.get(refId)).toEqual({
           id: refId,
           siblings: null,
-          value: "12.06.202",
-          formattedValue: "12.06.0202",
-        });
-        send_queue.delete(refId);
-
-        sandbox.createSandbox(data);
-        await sandbox.dispatchEventInSandbox({
-          id: refId,
-          value: "02.06.2023",
-          name: "Keystroke",
-          willCommit: true,
-        });
-        expect(send_queue.has(refId)).toEqual(true);
-        expect(send_queue.get(refId)).toEqual({
-          id: refId,
-          siblings: null,
-          value: "02.06.2023",
-          formattedValue: "02.06.2023",
+          value: "",
+          formattedValue: null,
+          selRange: [0, 0],
         });
         send_queue.delete(refId);
 
         sandbox.createSandbox(data);
         await sandbox.dispatchEventInSandbox({
           id: refId,
-          value: "2.6.2023",
+          value: "02062023",
           name: "Keystroke",
           willCommit: true,
         });
@@ -1134,8 +1120,8 @@ describe("Scripting", function () {
         expect(send_queue.get(refId)).toEqual({
           id: refId,
           siblings: null,
-          value: "2.6.2023",
-          formattedValue: "02.06.2023",
+          value: "02062023",
+          formattedValue: "02062023",
         });
         send_queue.delete(refId);
       });

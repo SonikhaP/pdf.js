@@ -60,8 +60,6 @@ class HighlightEditor extends AnnotationEditor {
 
   #isFreeHighlight = false;
 
-  #firstPoint = null;
-
   #lastPoint = null;
 
   #opacity;
@@ -128,10 +126,6 @@ class HighlightEditor extends AnnotationEditor {
       this.#addToDrawLayer();
       this.rotate(this.rotation);
     }
-
-    if (!this.annotationElementId) {
-      this._uiManager.a11yAlert("pdfjs-editor-highlight-added-alert");
-    }
   }
 
   /** @inheritdoc */
@@ -139,7 +133,7 @@ class HighlightEditor extends AnnotationEditor {
     return {
       action: "added",
       type: this.#isFreeHighlight ? "free_highlight" : "highlight",
-      color: this._uiManager.getNonHCMColorName(this.color),
+      color: this._uiManager.highlightColorNames.get(this.color),
       thickness: this.#thickness,
       methodOfCreation: this.#methodOfCreation,
     };
@@ -149,12 +143,8 @@ class HighlightEditor extends AnnotationEditor {
   get telemetryFinalData() {
     return {
       type: "highlight",
-      color: this._uiManager.getNonHCMColorName(this.color),
+      color: this._uiManager.highlightColorNames.get(this.color),
     };
-  }
-
-  get commentColor() {
-    return this.color;
   }
 
   static computeTelemetryFinalData(data) {
@@ -179,11 +169,7 @@ class HighlightEditor extends AnnotationEditor {
     this.#focusOutlines = outlinerForOutline.getOutlines();
 
     // The last point is in the pages coordinate system.
-    const { firstPoint, lastPoint } = this.#focusOutlines;
-    this.#firstPoint = [
-      (firstPoint[0] - this.x) / this.width,
-      (firstPoint[1] - this.y) / this.height,
-    ];
+    const { lastPoint } = this.#focusOutlines;
     this.#lastPoint = [
       (lastPoint[0] - this.x) / this.width,
       (lastPoint[1] - this.y) / this.height,
@@ -274,11 +260,7 @@ class HighlightEditor extends AnnotationEditor {
       }
     }
 
-    const { firstPoint, lastPoint } = this.#focusOutlines;
-    this.#firstPoint = [
-      (firstPoint[0] - x) / width,
-      (firstPoint[1] - y) / height,
-    ];
+    const { lastPoint } = this.#focusOutlines;
     this.#lastPoint = [(lastPoint[0] - x) / width, (lastPoint[1] - y) / height];
   }
 
@@ -292,7 +274,7 @@ class HighlightEditor extends AnnotationEditor {
   /** @inheritdoc */
   static updateDefaultParams(type, value) {
     switch (type) {
-      case AnnotationEditorParamsType.HIGHLIGHT_COLOR:
+      case AnnotationEditorParamsType.HIGHLIGHT_DEFAULT_COLOR:
         HighlightEditor._defaultColor = value;
         break;
       case AnnotationEditorParamsType.HIGHLIGHT_THICKNESS:
@@ -310,11 +292,6 @@ class HighlightEditor extends AnnotationEditor {
   }
 
   /** @inheritdoc */
-  get commentButtonPosition() {
-    return this.#firstPoint;
-  }
-
-  /** @inheritdoc */
   updateParams(type, value) {
     switch (type) {
       case AnnotationEditorParamsType.HIGHLIGHT_COLOR:
@@ -329,7 +306,7 @@ class HighlightEditor extends AnnotationEditor {
   static get defaultPropertiesToUpdate() {
     return [
       [
-        AnnotationEditorParamsType.HIGHLIGHT_COLOR,
+        AnnotationEditorParamsType.HIGHLIGHT_DEFAULT_COLOR,
         HighlightEditor._defaultColor,
       ],
       [
@@ -389,7 +366,7 @@ class HighlightEditor extends AnnotationEditor {
     this._reportTelemetry(
       {
         action: "color_changed",
-        color: this._uiManager.getNonHCMColorName(color),
+        color: this._uiManager.highlightColorNames.get(color),
       },
       /* mustWait = */ true
     );
@@ -421,14 +398,16 @@ class HighlightEditor extends AnnotationEditor {
   }
 
   /** @inheritdoc */
-  get toolbarButtons() {
-    if (this._uiManager.highlightColors) {
-      const colorPicker = (this.#colorPicker = new ColorPicker({
-        editor: this,
-      }));
-      return [["colorPicker", colorPicker]];
+  async addEditToolbar() {
+    const toolbar = await super.addEditToolbar();
+    if (!toolbar) {
+      return null;
     }
-    return super.toolbarButtons;
+    if (this._uiManager.highlightColors) {
+      this.#colorPicker = new ColorPicker({ editor: this });
+      toolbar.addColorPicker(this.#colorPicker);
+    }
+    return toolbar;
   }
 
   /** @inheritdoc */
@@ -885,16 +864,7 @@ class HighlightEditor extends AnnotationEditor {
     let initialData = null;
     if (data instanceof HighlightAnnotationElement) {
       const {
-        data: {
-          quadPoints,
-          rect,
-          rotation,
-          id,
-          color,
-          opacity,
-          popupRef,
-          contentsObj,
-        },
+        data: { quadPoints, rect, rotation, id, color, opacity, popupRef },
         parent: {
           page: { pageNumber },
         },
@@ -908,11 +878,9 @@ class HighlightEditor extends AnnotationEditor {
         pageIndex: pageNumber - 1,
         rect: rect.slice(0),
         rotation,
-        annotationElementId: id,
         id,
         deleted: false,
         popupRef,
-        comment: contentsObj?.str || null,
       };
     } else if (data instanceof InkAnnotationElement) {
       const {
@@ -924,7 +892,6 @@ class HighlightEditor extends AnnotationEditor {
           color,
           borderStyle: { rawWidth: thickness },
           popupRef,
-          contentsObj,
         },
         parent: {
           page: { pageNumber },
@@ -939,11 +906,9 @@ class HighlightEditor extends AnnotationEditor {
         pageIndex: pageNumber - 1,
         rect: rect.slice(0),
         rotation,
-        annotationElementId: id,
         id,
         deleted: false,
         popupRef,
-        comment: contentsObj?.str || null,
       };
     }
 
@@ -955,10 +920,8 @@ class HighlightEditor extends AnnotationEditor {
     if (inkLists) {
       editor.#thickness = data.thickness;
     }
+    editor.annotationElementId = data.id || null;
     editor._initialData = initialData;
-    if (data.comment) {
-      editor.setCommentData(data.comment);
-    }
 
     const [pageWidth, pageHeight] = editor.pageDimensions;
     const [pageX, pageY] = editor.pageTranslation;
@@ -1038,10 +1001,8 @@ class HighlightEditor extends AnnotationEditor {
       return this.serializeDeleted();
     }
 
-    const rect = this.getPDFRect();
-    const color = AnnotationEditor._colorManager.convert(
-      this._uiManager.getNonHCMColor(this.color)
-    );
+    const rect = this.getRect(0, 0);
+    const color = AnnotationEditor._colorManager.convert(this.color);
 
     const serialized = {
       annotationType: AnnotationEditorType.HIGHLIGHT,
@@ -1055,7 +1016,6 @@ class HighlightEditor extends AnnotationEditor {
       rotation: this.#getRotation(),
       structTreeParentId: this._structTreeParentId,
     };
-    this.addComment(serialized);
 
     if (this.annotationElementId && !this.#hasElementChanged(serialized)) {
       return null;
@@ -1067,24 +1027,14 @@ class HighlightEditor extends AnnotationEditor {
 
   #hasElementChanged(serialized) {
     const { color } = this._initialData;
-    return (
-      this.hasEditedComment || serialized.color.some((c, i) => c !== color[i])
-    );
+    return serialized.color.some((c, i) => c !== color[i]);
   }
 
   /** @inheritdoc */
   renderAnnotationElement(annotation) {
-    if (this.deleted) {
-      annotation.hide();
-      return null;
-    }
-    const params = {
-      rect: this.getPDFRect(),
-    };
-    if (this.hasEditedComment) {
-      params.popup = this.comment;
-    }
-    annotation.updateEdited(params);
+    annotation.updateEdited({
+      rect: this.getRect(0, 0),
+    });
 
     return null;
   }

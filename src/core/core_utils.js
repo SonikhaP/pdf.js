@@ -429,7 +429,7 @@ function _collectJS(entry, xref, list, parents) {
         /* keepEscapeSequence = */ true
       ).replaceAll("\x00", "");
       if (code) {
-        list.push(code.trim());
+        list.push(code);
       }
     }
     _collectJS(entry.getRaw("Next"), xref, list, parents);
@@ -679,19 +679,12 @@ function getNewAnnotationsMap(annotationStorage) {
   return newAnnotationsByPage.size > 0 ? newAnnotationsByPage : null;
 }
 
-// If the string is null or undefined then it is returned as is.
 function stringToAsciiOrUTF16BE(str) {
-  if (str === null || str === undefined) {
-    return str;
-  }
   return isAscii(str) ? str : stringToUTF16String(str, /* bigEndian = */ true);
 }
 
 function isAscii(str) {
-  if (typeof str !== "string") {
-    return false;
-  }
-  return !str || /^[\x00-\x7F]*$/.test(str);
+  return /^[\x00-\x7F]*$/.test(str);
 }
 
 function stringToUTF16HexString(str) {

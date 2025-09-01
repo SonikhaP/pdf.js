@@ -227,7 +227,7 @@ class Util extends PDFObject {
       ddd: data => this._days[data.dayOfWeek].substring(0, 3),
       dd: data => data.day.toString().padStart(2, "0"),
       d: data => data.day.toString(),
-      yyyy: data => data.year.toString().padStart(4, "0"),
+      yyyy: data => data.year.toString(),
       yy: data => (data.year % 100).toString().padStart(2, "0"),
       HH: data => data.hours.toString().padStart(2, "0"),
       H: data => data.hours.toString(),
@@ -619,10 +619,10 @@ class Util extends PDFObject {
     }
 
     const data = {
-      year: 2000, // 2000 because it's 00 in yy format.
+      year: new Date().getFullYear(),
       month: 0,
       day: 1,
-      hours: 0,
+      hours: 12,
       minutes: 0,
       seconds: 0,
       am: null,

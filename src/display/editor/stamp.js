@@ -52,6 +52,9 @@ class StampEditor extends AnnotationEditor {
 
   static _editorType = AnnotationEditorType.STAMP;
 
+  posX = 0;
+  posY = 0;
+
   constructor(params) {
     super({ ...params, name: "stampEditor" });
     this.#bitmapUrl = params.bitmapUrl;
@@ -93,6 +96,8 @@ class StampEditor extends AnnotationEditor {
     };
   }
 
+
+
   static computeTelemetryFinalData(data) {
     const hasAltTextStats = data.get("hasAltText");
     return {
@@ -128,10 +133,8 @@ class StampEditor extends AnnotationEditor {
       this._uiManager.useNewAltTextFlow &&
       this.#bitmap
     ) {
-      this.addEditToolbar().then(() => {
-        this._editToolbar.hide();
-        this._uiManager.editAltText(this, /* firstTime = */ true);
-      });
+      this._editToolbar.hide();
+      this._uiManager.editAltText(this, /* firstTime = */ true);
       return;
     }
 
@@ -277,6 +280,8 @@ class StampEditor extends AnnotationEditor {
     }
   }
 
+
+
   /** @inheritdoc */
   remove() {
     if (this.#bitmapId) {
@@ -339,17 +344,13 @@ class StampEditor extends AnnotationEditor {
   }
 
   /** @inheritdoc */
-  get toolbarButtons() {
-    return [["altText", this.createAltText()]];
-  }
-
-  /** @inheritdoc */
   get isResizable() {
     return true;
   }
 
   /** @inheritdoc */
   render() {
+   
     if (this.div) {
       return this.div;
     }
@@ -363,7 +364,7 @@ class StampEditor extends AnnotationEditor {
     super.render();
     this.div.hidden = true;
 
-    this.createAltText();
+    //this.addAltTextButton();//Sonikha Commented it Manually
 
     if (!this.#missingCanvas) {
       if (this.#bitmap) {
@@ -483,9 +484,6 @@ class StampEditor extends AnnotationEditor {
     });
     if (this.#bitmapFileName) {
       this.div.setAttribute("aria-description", this.#bitmapFileName);
-    }
-    if (!this.annotationElementId) {
-      this._uiManager.a11yAlert("pdfjs-editor-stamp-added-alert");
     }
   }
 
@@ -738,6 +736,8 @@ class StampEditor extends AnnotationEditor {
         width,
         height
       );
+      this.posX = this.x * pageWidth;
+      this.posY = this.y * pageHeight;
       return offscreen.transferToImageBitmap();
     }
 
@@ -750,7 +750,7 @@ class StampEditor extends AnnotationEditor {
     let missingCanvas = false;
     if (data instanceof StampAnnotationElement) {
       const {
-        data: { rect, rotation, id, structParent, popupRef, contentsObj },
+        data: { rect, rotation, id, structParent, popupRef },
         container,
         parent: {
           page: { pageNumber },
@@ -784,7 +784,6 @@ class StampEditor extends AnnotationEditor {
         pageIndex: pageNumber - 1,
         rect: rect.slice(0),
         rotation,
-        annotationElementId: id,
         id,
         deleted: false,
         accessibilityData: {
@@ -794,7 +793,6 @@ class StampEditor extends AnnotationEditor {
         isSvg: false,
         structParent,
         popupRef,
-        comment: contentsObj?.str || null,
       };
     }
     const editor = await super.deserialize(data, parent, uiManager);
@@ -817,16 +815,16 @@ class StampEditor extends AnnotationEditor {
     editor.width = (rect[2] - rect[0]) / parentWidth;
     editor.height = (rect[3] - rect[1]) / parentHeight;
 
+    editor.annotationElementId = data.id || null;
     if (accessibilityData) {
       editor.altTextData = accessibilityData;
     }
     editor._initialData = initialData;
-    if (data.comment) {
-      editor.setCommentData(data.comment);
-    }
     // No need to be add in the undo stack if the editor is created from an
     // existing one.
     editor.#hasBeenAddedInUndoStack = !!initialData;
+    editor.posX = rect[0] * parentWidth;
+    editor.posY = rect[1] * parentHeight;
 
     return editor;
   }
@@ -845,12 +843,11 @@ class StampEditor extends AnnotationEditor {
       annotationType: AnnotationEditorType.STAMP,
       bitmapId: this.#bitmapId,
       pageIndex: this.pageIndex,
-      rect: this.getPDFRect(),
+      rect: this.getRect(0, 0),
       rotation: this.rotation,
       isSvg: this.#isSvg,
       structTreeParentId: this._structTreeParentId,
     };
-    this.addComment(serialized);
 
     if (isForCopying) {
       // We don't know what's the final destination (this pdf or another one)
@@ -919,7 +916,6 @@ class StampEditor extends AnnotationEditor {
 
     return {
       isSame:
-        !this.hasEditedComment &&
         !this._hasBeenMoved &&
         !this._hasBeenResized &&
         isSamePageIndex &&
@@ -930,20 +926,15 @@ class StampEditor extends AnnotationEditor {
 
   /** @inheritdoc */
   renderAnnotationElement(annotation) {
-    if (this.deleted) {
-      annotation.hide();
-      return null;
-    }
-    const params = {
-      rect: this.getPDFRect(),
-    };
-    if (this.hasEditedComment) {
-      params.popup = this.comment;
-    }
-    annotation.updateEdited(params);
+    annotation.updateEdited({
+      rect: this.getRect(0, 0),
+    });
 
     return null;
   }
+
+
+
 }
 
 export { StampEditor };

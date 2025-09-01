@@ -44,7 +44,6 @@ import { PresentationModeState } from "./ui_utils.js";
  * @property {boolean} renderForms
  * @property {IPDFLinkService} linkService
  * @property {IDownloadManager} [downloadManager]
- * @property {boolean} [enableComment]
  * @property {boolean} [enableScripting]
  * @property {Promise<boolean>} [hasJSActionsPromise]
  * @property {Promise<Object<string, Array<Object>> | null>}
@@ -90,7 +89,6 @@ class AnnotationLayerBuilder {
     annotationStorage = null,
     imageResourcesPath = "",
     renderForms = true,
-    enableComment = false,
     enableScripting = false,
     hasJSActionsPromise = null,
     fieldObjectsPromise = null,
@@ -105,7 +103,6 @@ class AnnotationLayerBuilder {
     this.imageResourcesPath = imageResourcesPath;
     this.renderForms = renderForms;
     this.annotationStorage = annotationStorage;
-    this.enableComment = enableComment;
     this.enableScripting = enableScripting;
     this._hasJSActionsPromise = hasJSActionsPromise || Promise.resolve(false);
     this._fieldObjectsPromise = fieldObjectsPromise || Promise.resolve(null);
@@ -150,6 +147,30 @@ class AnnotationLayerBuilder {
     // Create an annotation layer div and render the annotations
     // if there is at least one annotation.
     const div = (this.div = document.createElement("div"));
+    //Added for Rectangle Annotation
+    const customAnnotations = annotations.filter(annot =>
+      annot.subtype === "Square" && annot.title?.startsWith("Markierung")
+    );
+
+    for (const annot of customAnnotations) {
+      const rect = Util.normalizeRect(annot.rect);
+      const [x1, y1, x2, y2] = viewport.convertToViewportRectangle(rect);
+      const width = x2 - x1;
+      const height = y2 - y1;
+
+      const highlightDiv = document.createElement("div");
+      highlightDiv.className = "custom-highlight";
+      highlightDiv.style.left = `${Math.min(x1, x2)}px`;
+      highlightDiv.style.top = `${Math.min(y1, y2)}px`;
+      highlightDiv.style.width = `${Math.abs(width)}px`;
+      highlightDiv.style.height = `${Math.abs(height)}px`;
+      highlightDiv.style.backgroundColor = "rgba(255, 255, 0, 0.3)";
+      highlightDiv.style.position = "absolute";
+      highlightDiv.style.pointerEvents = "none";
+
+      div.appendChild(highlightDiv);
+    }
+
     div.className = "annotationLayer";
     this.#onAppend?.(div);
 
@@ -169,7 +190,6 @@ class AnnotationLayerBuilder {
       linkService: this.linkService,
       downloadManager: this.downloadManager,
       annotationStorage: this.annotationStorage,
-      enableComment: this.enableComment,
       enableScripting: this.enableScripting,
       hasJSActions,
       fieldObjects,

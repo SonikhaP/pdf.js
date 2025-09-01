@@ -58,6 +58,8 @@ function zeroCanvas(c) {
  * @property {Object} [pageColors] - Overwrites background and foreground colors
  *   with user defined ones in order to improve readability in high contrast
  *   mode.
+ * @property {boolean} [enableHWA] - Enables hardware acceleration for
+ *   rendering. The default value is `false`.
  */
 
 class TempImageFactory {
@@ -104,6 +106,7 @@ class PDFThumbnailView {
     maxCanvasPixels,
     maxCanvasDim,
     pageColors,
+    enableHWA,
   }) {
     this.id = id;
     this.renderingId = "thumbnail" + id;
@@ -117,6 +120,7 @@ class PDFThumbnailView {
     this.maxCanvasPixels = maxCanvasPixels ?? AppOptions.get("maxCanvasPixels");
     this.maxCanvasDim = maxCanvasDim || AppOptions.get("maxCanvasDim");
     this.pageColors = pageColors || null;
+    this.enableHWA = enableHWA || false;
 
     this.eventBus = eventBus;
     this.linkService = linkService;
@@ -210,10 +214,14 @@ class PDFThumbnailView {
     this.resume = null;
   }
 
-  #getPageDrawContext(upscaleFactor = 1) {
+  #getPageDrawContext(upscaleFactor = 1, enableHWA = this.enableHWA) {
     // Keep the no-thumbnail outline visible, i.e. `data-loaded === false`,
     // until rendering/image conversion is complete, to avoid display issues.
     const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", {
+      alpha: false,
+      willReadFrequently: !enableHWA,
+    });
     const outputScale = new OutputScale();
     const width = upscaleFactor * this.canvasWidth,
       height = upscaleFactor * this.canvasHeight;
@@ -231,7 +239,7 @@ class PDFThumbnailView {
       ? [outputScale.sx, 0, 0, outputScale.sy, 0, 0]
       : null;
 
-    return { canvas, transform };
+    return { ctx, canvas, transform };
   }
 
   #convertCanvasToImage(canvas) {
@@ -272,7 +280,8 @@ class PDFThumbnailView {
     // the `draw` and `setImage` methods (fixes issue 8233).
     // NOTE: To primarily avoid increasing memory usage too much, but also to
     //   reduce downsizing overhead, we purposely limit the up-scaling factor.
-    const { canvas, transform } = this.#getPageDrawContext(DRAW_UPSCALE_FACTOR);
+    const { ctx, canvas, transform } =
+      this.#getPageDrawContext(DRAW_UPSCALE_FACTOR);
     const drawViewport = this.viewport.clone({
       scale: DRAW_UPSCALE_FACTOR * this.scale,
     });
@@ -289,7 +298,7 @@ class PDFThumbnailView {
     };
 
     const renderContext = {
-      canvas,
+      canvasContext: ctx,
       transform,
       viewport: drawViewport,
       optionalContentConfigPromise: this._optionalContentConfigPromise,
@@ -369,11 +378,7 @@ class PDFThumbnailView {
   }
 
   #reduceImage(img) {
-    const { canvas } = this.#getPageDrawContext(1);
-    const ctx = canvas.getContext("2d", {
-      alpha: false,
-      willReadFrequently: false,
-    });
+    const { ctx, canvas } = this.#getPageDrawContext(1, true);
 
     if (img.width <= 2 * canvas.width) {
       ctx.drawImage(

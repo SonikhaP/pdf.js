@@ -118,9 +118,10 @@ class AnnotationStorage {
       modified = true;
       this.#storage.set(key, value);
     }
-    if (modified) {
-      this.#setModified();
-    }
+    //Sonikha manually commented to avoid popup on every change
+    //if (modified) {
+    //  this.#setModified();
+    //}
 
     if (
       value instanceof AnnotationEditor &&

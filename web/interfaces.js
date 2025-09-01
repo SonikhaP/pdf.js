@@ -74,14 +74,6 @@ class IPDFLinkService {
   goToPage(val) {}
 
   /**
-   * Scrolls to a specific location in the PDF document.
-   * @param {number} pageNumber - The page number to scroll to.
-   * @param {number} x - The x-coordinate to scroll to in page coordinates.
-   * @param {number} y - The y-coordinate to scroll to in page coordinates.
-   */
-  goToXY(pageNumber, x, y) {}
-
-  /**
    * @param {HTMLAnchorElement} link
    * @param {string} url
    * @param {boolean} [newWindow]

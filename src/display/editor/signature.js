@@ -192,11 +192,6 @@ class SignatureEditor extends DrawingEditor {
         this.div.hidden = true;
         this._uiManager.getSignature(this);
       }
-    } else {
-      this.div.setAttribute(
-        "data-l10n-args",
-        JSON.stringify({ description: this.#description || "" })
-      );
     }
 
     if (_isCopy) {
@@ -222,10 +217,6 @@ class SignatureEditor extends DrawingEditor {
 
   set description(description) {
     this.#description = description;
-    if (!this.div) {
-      return;
-    }
-    this.div.setAttribute("data-l10n-args", JSON.stringify({ description }));
     super.addEditToolbar().then(toolbar => {
       toolbar?.updateEditSignatureButton(description);
     });
@@ -253,18 +244,28 @@ class SignatureEditor extends DrawingEditor {
   }
 
   /** @inheritdoc */
-  get toolbarButtons() {
-    if (this._uiManager.signatureManager) {
-      return [["editSignature", this._uiManager.signatureManager]];
+  async addEditToolbar() {
+    const toolbar = await super.addEditToolbar();
+    if (!toolbar) {
+      return null;
     }
-    return super.toolbarButtons;
+    if (this._uiManager.signatureManager && this.#description !== null) {
+      await toolbar.addEditSignatureButton(
+        this._uiManager.signatureManager,
+        this.#signatureUUID,
+        this.#description
+      );
+      toolbar.show();
+    }
+    return toolbar;
   }
 
   addSignature(data, heightInPage, description, uuid) {
     const { x: savedX, y: savedY } = this;
     const { outline } = (this.#signatureData = data);
     this.#isExtracted = outline instanceof ContourDrawOutline;
-    this.description = description;
+    this.#description = description;
+    this.div.setAttribute("data-l10n-args", JSON.stringify({ description }));
     let drawingOptions;
     if (this.#isExtracted) {
       drawingOptions = SignatureEditor.getDefaultDrawingOptions();
@@ -389,7 +390,6 @@ class SignatureEditor extends DrawingEditor {
       rotation: this.rotation,
       structTreeParentId: this._structTreeParentId,
     };
-    this.addComment(serialized);
     if (isForCopying) {
       serialized.paths = { lines, points };
       serialized.uuid = this.#signatureUUID;
@@ -437,7 +437,7 @@ class SignatureEditor extends DrawingEditor {
   static async deserialize(data, parent, uiManager) {
     const editor = await super.deserialize(data, parent, uiManager);
     editor.#isExtracted = data.areContours;
-    editor.description = data.accessibilityData?.alt || "";
+    editor.#description = data.accessibilityData?.alt || "";
     editor.#signatureUUID = data.uuid;
     return editor;
   }

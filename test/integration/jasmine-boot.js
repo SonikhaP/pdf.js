@@ -39,9 +39,9 @@ async function runTests(results) {
       "scripting_spec.mjs",
       "signature_editor_spec.mjs",
       "stamp_editor_spec.mjs",
+      "ok_stamp_editor_spec.mjs",
       "text_field_spec.mjs",
       "text_layer_spec.mjs",
-      "thumbnail_view_spec.mjs",
       "viewer_spec.mjs",
     ],
   });

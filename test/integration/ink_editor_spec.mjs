@@ -84,10 +84,6 @@ describe("Ink Editor", () => {
             await commit(page);
           }
 
-          await page.waitForFunction(
-            `document.getElementById("viewer-alert").textContent === "Drawing added"`
-          );
-
           await clearAll(page);
 
           await kbUndo(page);
@@ -345,8 +341,8 @@ describe("Ink Editor", () => {
           await page.waitForSelector(editorSelector);
           await waitForSerialized(page, 1);
 
-          await page.waitForSelector(`${editorSelector} button.deleteButton`);
-          await page.click(`${editorSelector} button.deleteButton`);
+          await page.waitForSelector(`${editorSelector} button.delete`);
+          await page.click(`${editorSelector} button.delete`);
           await waitForSerialized(page, 0);
 
           await kbUndo(page);
@@ -389,8 +385,8 @@ describe("Ink Editor", () => {
           await page.waitForSelector(editorSelector);
           await waitForSerialized(page, 1);
 
-          await page.waitForSelector(`${editorSelector} button.deleteButton`);
-          await page.click(`${editorSelector} button.deleteButton`);
+          await page.waitForSelector(`${editorSelector} button.delete`);
+          await page.click(`${editorSelector} button.delete`);
           await waitForSerialized(page, 0);
 
           const twoToFourteen = Array.from(new Array(13).keys(), n => n + 2);
@@ -446,8 +442,8 @@ describe("Ink Editor", () => {
           await page.waitForSelector(editorSelector);
           await waitForSerialized(page, 1);
 
-          await page.waitForSelector(`${editorSelector} button.deleteButton`);
-          await page.click(`${editorSelector} button.deleteButton`);
+          await page.waitForSelector(`${editorSelector} button.delete`);
+          await page.click(`${editorSelector} button.delete`);
           await waitForSerialized(page, 0);
 
           const twoToOne = Array.from(new Array(13).keys(), n => n + 2).concat(
@@ -897,8 +893,8 @@ describe("Ink Editor", () => {
           await page.waitForSelector(editorSelector);
           await waitForSerialized(page, 1);
 
-          await page.waitForSelector(`${editorSelector} button.deleteButton`);
-          await page.click(`${editorSelector} button.deleteButton`);
+          await page.waitForSelector(`${editorSelector} button.delete`);
+          await page.click(`${editorSelector} button.delete`);
           await waitForSerialized(page, 0);
           await page.waitForSelector("#editorUndoBar", { visible: true });
 
@@ -931,8 +927,8 @@ describe("Ink Editor", () => {
           await page.waitForSelector(editorSelector);
           await waitForSerialized(page, 1);
 
-          await page.waitForSelector(`${editorSelector} button.deleteButton`);
-          await page.click(`${editorSelector} button.deleteButton`);
+          await page.waitForSelector(`${editorSelector} button.delete`);
+          await page.click(`${editorSelector} button.delete`);
           await waitForSerialized(page, 0);
 
           await page.waitForFunction(() => {
@@ -970,8 +966,8 @@ describe("Ink Editor", () => {
           await page.waitForSelector(editorSelector);
           await waitForSerialized(page, 1);
 
-          await page.waitForSelector(`${editorSelector} button.deleteButton`);
-          await page.click(`${editorSelector} button.deleteButton`);
+          await page.waitForSelector(`${editorSelector} button.delete`);
+          await page.click(`${editorSelector} button.delete`);
           await waitForSerialized(page, 0);
           await page.waitForSelector("#editorUndoBar", { visible: true });
 
@@ -1101,8 +1097,8 @@ describe("Ink Editor", () => {
           await dragAndDrop(page, editorSelector, [[0, -30]], /* steps = */ 10);
           await waitForSerialized(page, 2);
 
-          await page.waitForSelector(`${editorSelector} button.deleteButton`);
-          await page.click(`${editorSelector} button.deleteButton`);
+          await page.waitForSelector(`${editorSelector} button.delete`);
+          await page.click(`${editorSelector} button.delete`);
           await waitForSerialized(page, 1);
           await page.waitForSelector("#editorUndoBar", { visible: true });
 
@@ -1216,13 +1212,6 @@ describe("The pen-drawn shape must maintain correct curvature regardless of the 
   it("must retain correct curvature regardless of the page or the curve's endpoint location", async () => {
     await Promise.all(
       pages.map(async ([browserName, page]) => {
-        if (browserName === "chrome" && navigator.platform.includes("Win")) {
-          // Skip the test for Chrome on Windows because it doesn't allow to
-          // have elements outside the viewport and thus permafails with e.g.
-          // `Cannot move beyond viewport (x: -32, y: 241)`.
-          return;
-        }
-
         await switchToInk(page);
 
         // Creating a reference curve on the first page with end
@@ -1298,48 +1287,6 @@ describe("Should switch from an editor and mode to others by double clicking", (
         await awaitPromise(modeChangedHandle);
         await page.waitForSelector("#editorFreeTextButton.toggled");
         await waitForSelectedEditor(page, freeTextSelector);
-      })
-    );
-  });
-});
-
-describe("Ink must update its color", () => {
-  let pages;
-
-  beforeEach(async () => {
-    pages = await loadAndWait("empty.pdf", ".annotationEditorLayer");
-  });
-
-  afterEach(async () => {
-    await closePages(pages);
-  });
-
-  it("must check that the stroke color is the one chosen from the color picker", async () => {
-    await Promise.all(
-      pages.map(async ([_, page]) => {
-        await switchToInk(page);
-
-        const rect = await getRect(page, ".annotationEditorLayer");
-
-        const x = rect.x + 20;
-        const y = rect.y + 20;
-        const clickHandle = await waitForPointerUp(page);
-        await page.mouse.move(x, y);
-        await page.mouse.down();
-        await page.mouse.move(x + 50, y + 50);
-        await page.mouse.up();
-        await awaitPromise(clickHandle);
-        await commit(page);
-
-        const editorSelector = getEditorSelector(0);
-        const colorPickerSelector = `${editorSelector} input.basicColorPicker`;
-        await page.waitForSelector(colorPickerSelector, { visible: true });
-        await page.locator(colorPickerSelector).fill("#ff0000");
-
-        await page.waitForSelector(
-          ".canvasWrapper svg.draw[stroke='#ff0000']",
-          { visible: true }
-        );
       })
     );
   });

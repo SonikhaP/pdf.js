@@ -14,14 +14,12 @@
  */
 
 import {
-  changeLightness,
   getFilenameFromUrl,
   getPdfFilenameFromUrl,
-  getRGB,
   isValidFetchUrl,
   PDFDateString,
 } from "../../src/display/display_utils.js";
-import { isNodeJS, toBase64Util } from "../../src/shared/util.js";
+import { toBase64Util } from "../../src/shared/util.js";
 
 describe("display_utils", function () {
   describe("getFilenameFromUrl", function () {
@@ -195,20 +193,6 @@ describe("display_utils", function () {
         "document.pdf"
       );
     });
-
-    it("gets PDF filename with a hash sign", function () {
-      expect(getPdfFilenameFromUrl("/foo.html?file=foo%23.pdf")).toEqual(
-        "foo#.pdf"
-      );
-
-      expect(getPdfFilenameFromUrl("/foo.html?file=%23.pdf")).toEqual("#.pdf");
-
-      expect(getPdfFilenameFromUrl("/foo.html?foo%23.pdf")).toEqual("foo#.pdf");
-
-      expect(getPdfFilenameFromUrl("/foo%23.pdf?a=b#c")).toEqual("foo#.pdf");
-
-      expect(getPdfFilenameFromUrl("foo.html#%23.pdf")).toEqual("#.pdf");
-    });
   });
 
   describe("isValidFetchUrl", function () {
@@ -297,31 +281,7 @@ describe("display_utils", function () {
             expect(result).toEqual(expectation);
           }
         }
-        const now = new Date();
-        expect(PDFDateString.toDateObject(now)).toEqual(now);
       });
-    });
-  });
-
-  describe("changeLightness", function () {
-    it("Check that the lightness is changed correctly", function () {
-      if (isNodeJS) {
-        pending("DOM is not supported in Node.js.");
-      }
-      const div = document.createElement("div");
-      const { style } = div;
-      style.width = style.height = "0";
-      style.backgroundColor = "hsl(123, 45%, 67%)";
-      document.body.append(div);
-      const [r, g, b] = getRGB(getComputedStyle(div).backgroundColor);
-      div.remove();
-      expect([r, g, b]).toEqual([133, 209, 137]);
-      expect(changeLightness(r, g, b, l => l)).toEqual(
-        "hsl(123.16, 45.24%, 67.06%)"
-      );
-      expect(changeLightness(r, g, b, l => l / 2)).toEqual(
-        "hsl(123.16, 45.24%, 33.53%)"
-      );
     });
   });
 });

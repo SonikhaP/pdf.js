@@ -2392,7 +2392,9 @@ describe("Interaction", () => {
         pages.map(async ([browserName, page], i) => {
           await waitForScripting(page);
 
-          await typeAndWaitForSandbox(page, getSelector("33R"), "7");
+          const inputSelector = getSelector("33R");
+          await page.click(inputSelector);
+          await page.type(inputSelector, "7");
           await page.click(getSelector("34R"));
           await page.waitForFunction(
             `${getQuerySelector("35R")}.value === "324,00"`
@@ -2460,9 +2462,10 @@ describe("Interaction", () => {
       await Promise.all(
         pages.map(async ([browserName, page]) => {
           if (browserName === "firefox") {
-            // Skip the test for Firefox as it doesn't support timezone
-            // emulation for WebDriver BiDi yet.
-            // TODO: Remove this check once bug 1978027 is fixed.
+            // Skip the test for Firefox as it doesn't support the timezone
+            // feature yet with BiDi.
+            // See https://github.com/puppeteer/puppeteer/issues/13344.
+            // TODO: Remove this check once the issue is fixed.
             return;
           }
 
@@ -2506,145 +2509,6 @@ describe("Interaction", () => {
 
           const value = await page.$eval(fieldSelector, el => el.value);
           expect(value).withContext(`In ${browserName}`).toEqual("Hello World");
-        })
-      );
-    });
-  });
-
-  describe("Date HTML element", () => {
-    let pages;
-
-    beforeEach(async () => {
-      pages = await loadAndWait("dates.pdf", "[data-annotation-id='26R']");
-    });
-
-    afterEach(async () => {
-      await closePages(pages);
-    });
-
-    it("must check that the inputs are correct", async () => {
-      await Promise.all(
-        pages.map(async ([browserName, page]) => {
-          await waitForScripting(page);
-          await waitForSandboxTrip(page);
-
-          const firstInputSelector = "[data-annotation-id='26R'] > input";
-          await page.waitForSelector(`${firstInputSelector}[type="text"]`);
-          await page.click(firstInputSelector);
-          await waitForSandboxTrip(page);
-          await page.waitForSelector(`${firstInputSelector}[type="date"]`);
-          await page.$eval(firstInputSelector, el => {
-            el.value = "1975-03-16";
-          });
-
-          const secondInputSelector = "[data-annotation-id='27R'] > input";
-          await page.waitForSelector(`${secondInputSelector}[type="text"]`);
-          await page.click(secondInputSelector);
-          await waitForSandboxTrip(page);
-          await page.waitForSelector(`${secondInputSelector}[type="time"]`);
-          await page.$eval(secondInputSelector, el => {
-            el.value = "01:23:45";
-          });
-
-          const thirdInputSelector = "[data-annotation-id='28R'] > input";
-          await page.waitForSelector(`${thirdInputSelector}[type="text"]`);
-          await page.click(thirdInputSelector);
-          await waitForSandboxTrip(page);
-          await page.waitForSelector(
-            `${thirdInputSelector}[type="datetime-local"]`
-          );
-          await page.$eval(thirdInputSelector, el => {
-            el.value = "1975-03-16T01:23:45";
-          });
-
-          const firstInputValue = await page.$eval(
-            firstInputSelector,
-            el => el.value
-          );
-          expect(firstInputValue)
-            .withContext(`In ${browserName}`)
-            .toEqual("16-Mar-75");
-
-          const secondInputValue = await page.$eval(
-            secondInputSelector,
-            el => el.value
-          );
-          expect(secondInputValue)
-            .withContext(`In ${browserName}`)
-            .toEqual("01:23:45");
-
-          await page.click(firstInputSelector);
-          await waitForSandboxTrip(page);
-
-          const thirdInputValue = await page.$eval(
-            thirdInputSelector,
-            el => el.value
-          );
-          expect(thirdInputValue)
-            .withContext(`In ${browserName}`)
-            .toEqual("3/16/1975 01:23");
-        })
-      );
-    });
-  });
-
-  describe("Date HTML element with initial values", () => {
-    let pages;
-
-    beforeEach(async () => {
-      pages = await loadAndWait("dates_save.pdf", "[data-annotation-id='26R']");
-    });
-
-    afterEach(async () => {
-      await closePages(pages);
-    });
-
-    it("must check that the inputs are correct", async () => {
-      await Promise.all(
-        pages.map(async ([browserName, page]) => {
-          await waitForScripting(page);
-          await waitForSandboxTrip(page);
-
-          const firstInputSelector = "[data-annotation-id='26R'] > input";
-          await page.waitForSelector(`${firstInputSelector}[type="text"]`);
-          await page.click(firstInputSelector);
-          await waitForSandboxTrip(page);
-          await page.waitForSelector(`${firstInputSelector}[type="date"]`);
-          const firstInputValue = await page.$eval(
-            firstInputSelector,
-            el => el.value
-          );
-          expect(firstInputValue)
-            .withContext(`In ${browserName}`)
-            .toEqual("2025-07-01");
-
-          const secondInputSelector = "[data-annotation-id='27R'] > input";
-          await page.waitForSelector(`${secondInputSelector}[type="text"]`);
-          await page.click(secondInputSelector);
-          await waitForSandboxTrip(page);
-          await page.waitForSelector(`${secondInputSelector}[type="time"]`);
-          const secondInputValue = await page.$eval(
-            secondInputSelector,
-            el => el.value
-          );
-          expect(secondInputValue)
-            .withContext(`In ${browserName}`)
-            .toEqual("00:34:56");
-
-          const thirdInputSelector = "[data-annotation-id='28R'] > input";
-          await page.waitForSelector(`${thirdInputSelector}[type="text"]`);
-          await page.click(thirdInputSelector);
-          await waitForSandboxTrip(page);
-          await page.waitForSelector(
-            `${thirdInputSelector}[type="datetime-local"]`
-          );
-          const thirdInputValue = await page.$eval(
-            thirdInputSelector,
-            el => el.value
-          );
-          expect(thirdInputValue)
-            .withContext(`In ${browserName}`)
-            .toEqual("2025-07-02T12:34");
         })
       );
     });

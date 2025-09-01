@@ -611,7 +611,6 @@
 !bug1802888.pdf
 !issue15759.pdf
 !issue18823.pdf
-!pr20043.pdf
 !issue15753.pdf
 !issue15789.pdf
 !fields_order.pdf
@@ -727,18 +726,3 @@
 !chrome-text-selection-markedContent.pdf
 !bug1963407.pdf
 !issue19517.pdf
-!empty#hash.pdf
-!bug1885505.pdf
-!bug1974436.pdf
-!firefox_logo.pdf
-!issue20062.pdf
-!issue20102.pdf
-!issue20065.pdf
-!bug1708041.pdf
-!bug1978317.pdf
-!dates.pdf
-!dates_save.pdf
-!print_protection.pdf
-!tracemonkey_with_annotations.pdf
-!tracemonkey_with_editable_annotations.pdf
-!bug1980958.pdf

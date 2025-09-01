@@ -218,11 +218,6 @@ const defaultOptions = {
     value: true,
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
   },
-  enableComment: {
-    /** @type {boolean} */
-    value: typeof PDFJSDev === "undefined" || PDFJSDev.test("TESTING"),
-    kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
-  },
   enableDetailCanvas: {
     /** @type {boolean} */
     value: true,
@@ -244,11 +239,6 @@ const defaultOptions = {
   enableNewAltTextWhenAddingImage: {
     /** @type {boolean} */
     value: true,
-    kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
-  },
-  enableOptimizedPartialRendering: {
-    /** @type {boolean} */
-    value: false,
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
   },
   enablePermissions: {
@@ -291,9 +281,7 @@ const defaultOptions = {
   },
   highlightEditorColors: {
     /** @type {string} */
-    value:
-      "yellow=#FFFF98,green=#53FFBC,blue=#80EBFF,pink=#FFCBE6,red=#FF4F5F," +
-      "yellow_HCM=#FFFFCC,green_HCM=#53FFBC,blue_HCM=#80EBFF,pink_HCM=#F6B8FF,red_HCM=#C50043",
+    value: "yellow=#FFFF98,green=#53FFBC,blue=#80EBFF,pink=#FFCBE6,red=#FF4F5F",
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
   },
   historyUpdateUrl: {

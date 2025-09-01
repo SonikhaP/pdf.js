@@ -17,6 +17,8 @@ import { RenderingCancelledException } from "pdfjs-lib";
 import { RenderingStates } from "./ui_utils.js";
 
 class BasePDFPageView {
+  #enableHWA = false;
+
   #loadingId = null;
 
   #minDurationToUpdateCanvas = 0;
@@ -36,15 +38,11 @@ class BasePDFPageView {
   /** @type {null | HTMLDivElement} */
   div = null;
 
-  enableOptimizedPartialRendering = false;
-
   eventBus = null;
 
   id = null;
 
   pageColors = null;
-
-  recordedGroups = null;
 
   renderingQueue = null;
 
@@ -53,12 +51,12 @@ class BasePDFPageView {
   resume = null;
 
   constructor(options) {
+    this.#enableHWA =
+      #enableHWA in options ? options.#enableHWA : options.enableHWA || false;
     this.eventBus = options.eventBus;
     this.id = options.id;
     this.pageColors = options.pageColors || null;
     this.renderingQueue = options.renderingQueue;
-    this.enableOptimizedPartialRendering =
-      options.enableOptimizedPartialRendering ?? false;
     this.#minDurationToUpdateCanvas = options.minDurationToUpdateCanvas ?? 500;
   }
 
@@ -168,7 +166,12 @@ class BasePDFPageView {
       }
     };
 
-    return { canvas, prevCanvas };
+    const ctx = canvas.getContext("2d", {
+      alpha: false,
+      willReadFrequently: !this.#enableHWA,
+    });
+
+    return { canvas, prevCanvas, ctx };
   }
 
   #renderContinueCallback = cont => {
@@ -234,9 +237,6 @@ class BasePDFPageView {
       // triggering this callback.
       if (renderTask === this.renderTask) {
         this.renderTask = null;
-        if (this.enableOptimizedPartialRendering) {
-          this.recordedGroups ??= renderTask.recordedGroups;
-        }
       }
     }
     this.renderingState = RenderingStates.FINISHED;

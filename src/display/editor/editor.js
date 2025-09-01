@@ -30,7 +30,6 @@ import {
 } from "../../shared/util.js";
 import { noContextMenu, stopEvent } from "../display_utils.js";
 import { AltText } from "./alt_text.js";
-import { Comment } from "./comment.js";
 import { EditorToolbar } from "./toolbar.js";
 import { TouchManager } from "../touch_manager.js";
 
@@ -52,10 +51,6 @@ class AnnotationEditor {
   #allResizerDivs = null;
 
   #altText = null;
-
-  #comment = null;
-
-  #commentStandaloneButton = null;
 
   #disabled = false;
 
@@ -185,8 +180,6 @@ class AnnotationEditor {
     this._willKeepAspectRatio = false;
     this._initialOptions.isCentered = parameters.isCentered;
     this._structTreeParentId = null;
-    this.annotationElementId = parameters.annotationElementId || null;
-    this.creationDate = new Date();
 
     const {
       rotation,
@@ -209,10 +202,6 @@ class AnnotationEditor {
 
   get editorType() {
     return Object.getPrototypeOf(this).constructor._type;
-  }
-
-  get mode() {
-    return Object.getPrototypeOf(this).constructor._editorType;
   }
 
   static get isDrawer() {
@@ -316,10 +305,6 @@ class AnnotationEditor {
     this.div?.classList.toggle("draggable", value);
   }
 
-  get uid() {
-    return this.annotationElementId || this.id;
-  }
-
   /**
    * @returns {boolean} true if the editor handles the Enter key itself.
    */
@@ -379,6 +364,7 @@ class AnnotationEditor {
   setParent(parent) {
     if (parent !== null) {
       this.pageIndex = parent.pageIndex;
+      this.viewport = parent.viewport;
       this.pageDimensions = parent.pageDimensions;
     } else {
       // The editor is being removed from the DOM, so we need to stop resizing.
@@ -442,9 +428,6 @@ class AnnotationEditor {
    * Commit the data contained in this editor.
    */
   commit() {
-    if (!this.isInEditMode()) {
-      return;
-    }
     this.addToAnnotationStorage();
   }
 
@@ -808,6 +791,10 @@ class AnnotationEditor {
       div.addEventListener("contextmenu", noContextMenu, { signal });
       div.tabIndex = -1;
     }
+    if (!this.div) {
+      console.warn("🛑 Cannot create resizers: this.div is null");
+      return;
+    }
     this.div.prepend(this.#resizersDiv);
   }
 
@@ -1068,14 +1055,6 @@ class AnnotationEditor {
   }
 
   /**
-   * Get the toolbar buttons for this editor.
-   * @returns {Array<Array<string|object|null>>|null}
-   */
-  get toolbarButtons() {
-    return null;
-  }
-
-  /**
    * Add a toolbar for this editor.
    * @returns {Promise<EditorToolbar|null>}
    */
@@ -1085,14 +1064,9 @@ class AnnotationEditor {
     }
     this._editToolbar = new EditorToolbar(this);
     this.div.append(this._editToolbar.render());
-    const { toolbarButtons } = this;
-    if (toolbarButtons) {
-      for (const [name, tool] of toolbarButtons) {
-        await this._editToolbar.addButton(name, tool);
-      }
+    if (this.#altText) {
+      await this._editToolbar.addAltText(this.#altText);
     }
-    this._editToolbar.addButton("comment", this.addCommentButton());
-    this._editToolbar.addButton("delete");
 
     return this._editToolbar;
   }
@@ -1122,20 +1096,17 @@ class AnnotationEditor {
     return this.div.getBoundingClientRect();
   }
 
-  /**
-   * Create the alt text for this editor.
-   * @returns {object}
-   */
-  createAltText() {
-    if (!this.#altText) {
-      AltText.initialize(AnnotationEditor._l10n);
-      this.#altText = new AltText(this);
-      if (this.#accessibilityData) {
-        this.#altText.data = this.#accessibilityData;
-        this.#accessibilityData = null;
-      }
+  async addAltTextButton() {
+    if (this.#altText) {
+      return;
     }
-    return this.#altText;
+    AltText.initialize(AnnotationEditor._l10n);
+    this.#altText = new AltText(this);
+    if (this.#accessibilityData) {
+      this.#altText.data = this.#accessibilityData;
+      this.#accessibilityData = null;
+    }
+    await this.addEditToolbar();
   }
 
   get altTextData() {
@@ -1170,87 +1141,6 @@ class AnnotationEditor {
 
   hasAltTextData() {
     return this.#altText?.hasData() ?? false;
-  }
-
-  addCommentButton() {
-    return (this.#comment ||= new Comment(this));
-  }
-
-  addStandaloneCommentButton() {
-    this.#comment ||= new Comment(this);
-    if (this.#commentStandaloneButton) {
-      return;
-    }
-    this.#commentStandaloneButton = this.#comment.renderForStandalone();
-    this.div.append(this.#commentStandaloneButton);
-  }
-
-  removeStandaloneCommentButton() {
-    this.#commentStandaloneButton?.remove();
-    this.#commentStandaloneButton = null;
-  }
-
-  get commentColor() {
-    return null;
-  }
-
-  get comment() {
-    const comment = this.#comment;
-    return {
-      text: comment.data.text,
-      date: comment.data.date,
-      deleted: comment.isDeleted(),
-      color: this.commentColor,
-    };
-  }
-
-  set comment(text) {
-    if (!this.#comment) {
-      this.#comment = new Comment(this);
-    }
-    this.#comment.data = text;
-  }
-
-  setCommentData(text) {
-    if (!this.#comment) {
-      this.#comment = new Comment(this);
-    }
-    this.#comment.setInitialText(text);
-  }
-
-  get hasEditedComment() {
-    return this.#comment?.hasBeenEdited();
-  }
-
-  get hasComment() {
-    return !!this.#comment && !this.#comment.isDeleted();
-  }
-
-  async editComment() {
-    if (!this.#comment) {
-      this.#comment = new Comment(this);
-    }
-    this.#comment.edit();
-  }
-
-  showComment() {}
-
-  addComment(serialized) {
-    if (this.hasEditedComment) {
-      const DEFAULT_POPUP_WIDTH = 180;
-      const DEFAULT_POPUP_HEIGHT = 100;
-      const [, , , trY] = serialized.rect;
-      const [pageWidth] = this.pageDimensions;
-      const [pageX] = this.pageTranslation;
-      const blX = pageX + pageWidth + 1;
-      const blY = trY - DEFAULT_POPUP_HEIGHT;
-      const trX = blX + DEFAULT_POPUP_WIDTH;
-      serialized.popup = {
-        contents: this.comment.text,
-        deleted: this.comment.deleted,
-        rect: [blX, blY, trX, trY],
-      };
-    }
   }
 
   /**
@@ -1597,26 +1487,6 @@ class AnnotationEditor {
   }
 
   /**
-   * Get the rect in page coordinates without any translation.
-   * It's used when serializing the editor.
-   * @returns {Array<number>}
-   */
-  getPDFRect() {
-    return this.getRect(0, 0);
-  }
-
-  getData() {
-    return {
-      id: this.uid,
-      pageIndex: this.pageIndex,
-      rect: this.getPDFRect(),
-      contentsObj: { str: this.comment.text },
-      creationDate: this.creationDate,
-      popupRef: !this.#comment.isDeleted(),
-    };
-  }
-
-  /**
    * Executed once this editor has been rendered.
    * @param {boolean} focus - true if the editor should be focused.
    */
@@ -1761,7 +1631,6 @@ class AnnotationEditor {
       parent,
       id: parent.getNextId(),
       uiManager,
-      annotationElementId: data.annotationElementId,
     });
     editor.rotation = data.rotation;
     editor.#accessibilityData = data.accessibilityData;
@@ -1847,14 +1716,6 @@ class AnnotationEditor {
 
   get toolbarPosition() {
     return null;
-  }
-
-  /**
-   * Get the position of the comment button.
-   * @returns {Array<number>|null}
-   */
-  get commentButtonPosition() {
-    return this._uiManager.direction === "ltr" ? [1, 0] : [0, 0];
   }
 
   /**
@@ -1992,7 +1853,7 @@ class AnnotationEditor {
       return;
     }
     this.isSelected = true;
-    this.makeResizable();
+    //this.makeResizable();// Sonikha commented it manually 
     this.div?.classList.add("selectedEditor");
     if (!this._editToolbar) {
       this.addEditToolbar().then(() => {
@@ -2006,7 +1867,7 @@ class AnnotationEditor {
       return;
     }
     this._editToolbar?.show();
-    this.#altText?.toggleAltTextBadge(false);
+    // this.#altText?.toggleAltTextBadge(false);// Sonikha commented it manually 
   }
 
   /**
@@ -2017,7 +1878,7 @@ class AnnotationEditor {
       return;
     }
     this.isSelected = false;
-    this.#resizersDiv?.classList.add("hidden");
+   // this.#resizersDiv?.classList.add("hidden");// Sonikha commented it manually 
     this.div?.classList.remove("selectedEditor");
     if (this.div?.contains(document.activeElement)) {
       // Don't use this.div.blur() because we don't know where the focus will
@@ -2027,7 +1888,7 @@ class AnnotationEditor {
       });
     }
     this._editToolbar?.hide();
-    this.#altText?.toggleAltTextBadge(true);
+    //this.#altText?.toggleAltTextBadge(true);// Sonikha commented it manually 
   }
 
   /**
@@ -2216,10 +2077,6 @@ class AnnotationEditor {
    * @returns {HTMLElement|null}
    */
   renderAnnotationElement(annotation) {
-    if (this.deleted) {
-      annotation.hide();
-      return null;
-    }
     let content = annotation.container.querySelector(".annotationContent");
     if (!content) {
       content = document.createElement("div");

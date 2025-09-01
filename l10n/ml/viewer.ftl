@@ -91,6 +91,14 @@ pdfjs-document-properties-size-kb = { NUMBER($kb, maximumSignificantDigits: 3) }
 #   $mb (Number) - the PDF file size in megabytes
 #   $b (Number) - the PDF file size in bytes
 pdfjs-document-properties-size-mb = { NUMBER($mb, maximumSignificantDigits: 3) } MB ({ $b } ബൈറ്റുകൾ)
+# Variables:
+#   $size_kb (Number) - the PDF file size in kilobytes
+#   $size_b (Number) - the PDF file size in bytes
+pdfjs-document-properties-kb = { $size_kb } കെബി ({ $size_b } ബൈറ്റുകള്‍)
+# Variables:
+#   $size_mb (Number) - the PDF file size in megabytes
+#   $size_b (Number) - the PDF file size in bytes
+pdfjs-document-properties-mb = { $size_mb } എംബി ({ $size_b } ബൈറ്റുകള്‍)
 pdfjs-document-properties-title = തലക്കെട്ട്‌
 pdfjs-document-properties-author = രചയിതാവ്:
 pdfjs-document-properties-subject = വിഷയം:
@@ -100,6 +108,10 @@ pdfjs-document-properties-modification-date = മാറ്റം വരുത്
 # Variables:
 #   $dateObj (Date) - the creation/modification date and time of the PDF file
 pdfjs-document-properties-date-time-string = { DATETIME($dateObj, dateStyle: "short", timeStyle: "medium") }
+# Variables:
+#   $date (Date) - the creation/modification date of the PDF file
+#   $time (Time) - the creation/modification time of the PDF file
+pdfjs-document-properties-date-string = { $date }, { $time }
 pdfjs-document-properties-creator = സൃഷ്ടികര്‍ത്താവ്:
 pdfjs-document-properties-producer = പിഡിഎഫ് പ്രൊഡ്യൂസര്‍:
 pdfjs-document-properties-version = പിഡിഎഫ് പതിപ്പ്:
@@ -234,6 +246,10 @@ pdfjs-rendering-error = താള്‍ റെണ്ടര്‍ ചെയ്യ
 
 ## Annotations
 
+# Variables:
+#   $date (Date) - the modification date of the annotation
+#   $time (Time) - the modification time of the annotation
+pdfjs-annotation-date-string = { $date }, { $time }
 # .alt: This is used as a tooltip.
 # Variables:
 #   $type (String) - an annotation type from a list defined in the PDF spec
@@ -247,8 +263,8 @@ pdfjs-annotation-date-time-string = { DATETIME($dateObj, dateStyle: "short", tim
 
 ## Password
 
-pdfjs-password-label = ഈ പിഡിഎഫ് ഫയല്‍ തുറക്കുന്നതിനു് ഒളിവാക്ക് നല്‍കുക.
-pdfjs-password-invalid = തെറ്റായ ഒളിവാക്ക്, ദയവായി വീണ്ടും ശ്രമിയ്ക്കുക.
+pdfjs-password-label = ഈ പിഡിഎഫ് ഫയല്‍ തുറക്കുന്നതിനു് രഹസ്യവാക്ക് നല്‍കുക.
+pdfjs-password-invalid = തെറ്റായ രഹസ്യവാക്ക്, ദയവായി വീണ്ടും ശ്രമിയ്ക്കുക.
 pdfjs-password-ok-button = ശരി
 pdfjs-password-cancel-button = റദ്ദാക്കുക
 pdfjs-web-fonts-disabled = വെബിനുള്ള അക്ഷരസഞ്ചയങ്ങള്‍ പ്രവര്‍ത്തന രഹിതം: എംബഡ്ഡ് ചെയ്ത പിഡിഎഫ് അക്ഷരസഞ്ചയങ്ങള്‍ ഉപയോഗിയ്ക്കുവാന്‍ സാധ്യമല്ല.
@@ -274,6 +290,9 @@ pdfjs-highlight-floating-button-label = അടയാളപ്പെടുക
 pdfjs-editor-signature-button =
     .title = പുതിയ ഒപ്പു് ചേൎക്കുക
 pdfjs-editor-signature-button-label = പുതിയ ഒപ്പു് ചേൎക്കുക
+
+## Default editor aria labels
+
 
 ## Remove button for the various kind of editor.
 
@@ -309,12 +328,16 @@ pdfjs-editor-signature-add-signature-button-label = പുതിയ ഒപ്പ
 #   $description (String) - a string describing/labeling the signature.
 pdfjs-editor-add-saved-signature-button =
     .title = കരുതിവച്ച ഒപ്പു് : { $description }
+pdfjs-free-text-default-content = എഴുതാൻ തുടങ്ങുക…
+pdfjs-ink-canvas =
+    .aria-label = ഉപയോക്താവ് ഉണ്ടാക്കിയ ചിത്രം
 
 ## Alt-text dialog
 
 pdfjs-editor-alt-text-button-label = മറുയെഴുത്തു്
 pdfjs-editor-alt-text-edit-button =
     .aria-label = മറുയെഴുത്തു് തിരുത്തുക
+pdfjs-editor-alt-text-edit-button-label = മറുയെഴുത്തു് തിരുത്തുക
 pdfjs-editor-alt-text-dialog-label = സാധ്യത തിരഞ്ഞെടുക്കൂ
 pdfjs-editor-alt-text-add-description-label = ഒരു വിവരണം ചേർക്കുക
 pdfjs-editor-alt-text-cancel-button = റദ്ദാക്കുക
@@ -325,6 +348,17 @@ pdfjs-editor-alt-text-textarea =
 # Alternative text (alt text) helps when people can't see the image.
 pdfjs-editor-alt-text-button =
     .aria-label = മറുയെഴുത്തു്
+
+## Editor resizers
+## This is used in an aria label to help to understand the role of the resizer.
+
+pdfjs-editor-resizer-label-top-left = ഇടതു മീത്ത മുക്ക് — വലുപ്പം മാറ്റുക
+pdfjs-editor-resizer-label-top-middle = നടുവിൽ മീത്ത മുക്ക് - വലുപ്പം മാറ്റുക
+pdfjs-editor-resizer-label-top-right = വലതു മീത്ത മുക്ക് — വലുപ്പം മാറ്റുക
+pdfjs-editor-resizer-label-middle-right = വലതു നടുവിലുള്ള മുക്ക് — വലുപ്പം മാറ്റുക
+pdfjs-editor-resizer-label-bottom-right = വലതു കീഴിലുള്ള മുക്ക് — വലുപ്പം മാറ്റുക
+pdfjs-editor-resizer-label-bottom-middle = നടുവെ കീഴിലുള്ള മുക്ക് — വലുപ്പം മാറ്റുക
+pdfjs-editor-resizer-label-bottom-left = ഇടതു കീഴിലുള്ള മുക്ക് — വലുപ്പം മാറ്റുക
 
 ## Color picker
 

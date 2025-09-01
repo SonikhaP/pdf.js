@@ -192,18 +192,6 @@ class PDFLinkService {
       destArray: explicitDest,
       ignoreDestinationZoom: this._ignoreDestinationZoom,
     });
-
-    const ac = new AbortController();
-    this.eventBus._on(
-      "textlayerrendered",
-      evt => {
-        if (evt.pageNumber === pageNumber) {
-          evt.source.textLayer.div.focus();
-          ac.abort();
-        }
-      },
-      { signal: ac.signal }
-    );
   }
 
   /**
@@ -237,20 +225,6 @@ class PDFLinkService {
     }
 
     this.pdfViewer.scrollPageIntoView({ pageNumber });
-  }
-
-  /**
-   * Scrolls to a specific location in the PDF document.
-   * @param {number} pageNumber - The page number to scroll to.
-   * @param {number} x - The x-coordinate to scroll to in page coordinates.
-   * @param {number} y - The y-coordinate to scroll to in page coordinates.
-   */
-  goToXY(pageNumber, x, y) {
-    this.pdfViewer.scrollPageIntoView({
-      pageNumber,
-      destArray: [null, { name: "XYZ" }, x, y],
-      ignoreDestinationZoom: true,
-    });
   }
 
   /**

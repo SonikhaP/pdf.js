@@ -48,7 +48,9 @@ class IccColorSpace extends ColorSpace {
 
   static #wasmUrl = null;
 
-  static #finalizer = null;
+  static #finalizer = new FinalizationRegistry(transformer => {
+    qcms_drop_transformer(transformer);
+  });
 
   constructor(iccProfile, name, numComps) {
     if (!IccColorSpace.isUsable) {
@@ -98,9 +100,6 @@ class IccColorSpace extends ColorSpace {
     if (!this.#transformer) {
       throw new Error("Failed to create ICC color space");
     }
-    IccColorSpace.#finalizer ||= new FinalizationRegistry(transformer => {
-      qcms_drop_transformer(transformer);
-    });
     IccColorSpace.#finalizer.register(this, this.#transformer);
   }
 

@@ -125,10 +125,6 @@ describe("Stamp Editor", () => {
           const editorSelector = getEditorSelector(0);
           await waitForImage(page, editorSelector);
 
-          await page.waitForFunction(
-            `document.getElementById("viewer-alert").textContent === "Image added"`
-          );
-
           const { width } = await getEditorDimensions(page, editorSelector);
 
           // The image is bigger than the page, so it has been scaled down to
@@ -183,8 +179,8 @@ describe("Stamp Editor", () => {
           await waitForImage(page, editorSelector);
           await waitForSerialized(page, 1);
 
-          await page.waitForSelector(`${editorSelector} button.deleteButton`);
-          await page.click(`${editorSelector} button.deleteButton`);
+          await page.waitForSelector(`${editorSelector} button.delete`);
+          await page.click(`${editorSelector} button.delete`);
           await waitForSerialized(page, 0);
 
           await kbUndo(page);
@@ -677,8 +673,8 @@ describe("Stamp Editor", () => {
         await page.waitForSelector(editorSelector);
         await waitForSerialized(page, 1);
 
-        await page.waitForSelector(`${editorSelector} button.deleteButton`);
-        await page.click(`${editorSelector} button.deleteButton`);
+        await page.waitForSelector(`${editorSelector} button.delete`);
+        await page.click(`${editorSelector} button.delete`);
         await waitForSerialized(page, 0);
 
         await kbUndo(page);
@@ -709,8 +705,8 @@ describe("Stamp Editor", () => {
         await page.waitForSelector(editorSelector);
         await waitForSerialized(page, 1);
 
-        await page.waitForSelector(`${editorSelector} button.deleteButton`);
-        await page.click(`${editorSelector} button.deleteButton`);
+        await page.waitForSelector(`${editorSelector} button.delete`);
+        await page.click(`${editorSelector} button.delete`);
         await waitForSerialized(page, 0);
 
         const twoToFourteen = Array.from(new Array(13).keys(), n => n + 2);
@@ -754,8 +750,8 @@ describe("Stamp Editor", () => {
         await page.waitForSelector(editorSelector);
         await waitForSerialized(page, 1);
 
-        await page.waitForSelector(`${editorSelector} button.deleteButton`);
-        await page.click(`${editorSelector} button.deleteButton`);
+        await page.waitForSelector(`${editorSelector} button.delete`);
+        await page.click(`${editorSelector} button.delete`);
         await waitForSerialized(page, 0);
 
         const twoToOne = Array.from(new Array(13).keys(), n => n + 2).concat(
@@ -1368,7 +1364,7 @@ describe("Stamp Editor", () => {
     });
   });
 
-  describe("A stamp mustn't be on top of the secondary toolbar", () => {
+  describe("A stamp musn't be on top of the secondary toolbar", () => {
     let pages;
 
     beforeEach(async () => {
@@ -1532,8 +1528,8 @@ describe("Stamp Editor", () => {
           let serialized = await getSerialized(page);
           expect(serialized).withContext(`In ${browserName}`).toEqual([]);
 
-          await page.waitForSelector(`${editorSelector} button.deleteButton`);
-          await page.click(`${editorSelector} button.deleteButton`);
+          await page.waitForSelector(`${editorSelector} button.delete`);
+          await page.click(`${editorSelector} button.delete`);
 
           await waitForSerialized(page, 1);
           serialized = await getSerialized(page);
@@ -1606,8 +1602,8 @@ describe("Stamp Editor", () => {
         await page.waitForSelector(editorSelector);
         await waitForSerialized(page, 1);
 
-        await page.waitForSelector(`${editorSelector} button.deleteButton`);
-        await page.click(`${editorSelector} button.deleteButton`);
+        await page.waitForSelector(`${editorSelector} button.delete`);
+        await page.click(`${editorSelector} button.delete`);
         await waitForSerialized(page, 0);
         await page.waitForSelector("#editorUndoBar", { visible: true });
 
@@ -1631,8 +1627,8 @@ describe("Stamp Editor", () => {
         await page.waitForSelector(editorSelector);
         await waitForSerialized(page, 1);
 
-        await page.waitForSelector(`${editorSelector} button.deleteButton`);
-        await page.click(`${editorSelector} button.deleteButton`);
+        await page.waitForSelector(`${editorSelector} button.delete`);
+        await page.click(`${editorSelector} button.delete`);
         await waitForSerialized(page, 0);
 
         await page.waitForFunction(() => {
@@ -1657,8 +1653,8 @@ describe("Stamp Editor", () => {
         await page.waitForSelector(editorSelector);
         await waitForSerialized(page, 1);
 
-        await page.waitForSelector(`${editorSelector} button.deleteButton`);
-        await page.click(`${editorSelector} button.deleteButton`);
+        await page.waitForSelector(`${editorSelector} button.delete`);
+        await page.click(`${editorSelector} button.delete`);
         await waitForSerialized(page, 0);
 
         await page.waitForSelector("#editorUndoBar", { visible: true });

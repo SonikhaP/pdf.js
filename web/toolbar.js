@@ -23,6 +23,7 @@ import {
   MIN_SCALE,
   toggleExpandedBtn,
 } from "./ui_utils.js";
+import { addStaticStamp } from "./stampHelper.js";
 
 /**
  * @typedef {Object} ToolbarOptions
@@ -41,6 +42,7 @@ import {
  * @property {HTMLButtonElement} editorFreeTextButton - Button to switch to
  *   FreeText editing.
  * @property {HTMLButtonElement} download - Button to download the document.
+
  */
 
 class Toolbar {
@@ -57,6 +59,7 @@ class Toolbar {
    *    - 1 (compact) - The small toolbar size.
    *    - 2 (touch) - The large toolbar size.
    */
+
   constructor(options, eventBus, toolbarDensity = 0) {
     this.#opts = options;
     this.eventBus = eventBus;
@@ -67,18 +70,6 @@ class Toolbar {
       { element: options.zoomOut, eventName: "zoomout" },
       { element: options.print, eventName: "print" },
       { element: options.download, eventName: "download" },
-      {
-        element: options.editorCommentButton,
-        eventName: "switchannotationeditormode",
-        eventDetails: {
-          get mode() {
-            const { classList } = options.editorCommentButton;
-            return classList.contains("toggled")
-              ? AnnotationEditorType.NONE
-              : AnnotationEditorType.POPUP;
-          },
-        },
-      },
       {
         element: options.editorFreeTextButton,
         eventName: "switchannotationeditormode",
@@ -124,6 +115,60 @@ class Toolbar {
             return classList.contains("toggled")
               ? AnnotationEditorType.NONE
               : AnnotationEditorType.STAMP;
+          },
+        },
+        telemetry: {
+          type: "editing",
+          data: { action: "pdfjs.image.icon_click" },
+        },
+      },
+      {
+        element: options.editorStampButton_OK,
+        eventName: "switchannotationeditormode", eventDetails: {
+          get mode() {
+
+            const { classList } = options.editorStampButton_OK;
+
+            return classList.contains("toggled")
+              ? AnnotationEditorType.NONE
+              : AnnotationEditorType.STAMP;
+
+          },
+        },
+        telemetry: {
+          type: "editing",
+          data: { action: "pdfjs.image.icon_click" },
+        },
+      },
+      {
+        element: options.editorStampButton_CROSS,
+        eventName: "switchannotationeditormode", eventDetails: {
+          get mode() {
+
+            const { classList } = options.editorStampButton_CROSS;
+
+            return classList.contains("toggled")
+              ? AnnotationEditorType.NONE
+              : AnnotationEditorType.STAMP;
+
+          },
+        },
+        telemetry: {
+          type: "editing",
+          data: { action: "pdfjs.image.icon_click" },
+        },
+      },
+      {
+        element: options.editorStampButton_QUESTION,
+        eventName: "switchannotationeditormode", eventDetails: {
+          get mode() {
+
+            const { classList } = options.editorStampButton_QUESTION;
+
+            return classList.contains("toggled")
+              ? AnnotationEditorType.NONE
+              : AnnotationEditorType.STAMP;
+
           },
         },
         telemetry: {
@@ -227,6 +272,90 @@ class Toolbar {
         }
       });
     }
+
+    let uiManager = null;
+
+    PDFViewerApplication.eventBus.on("annotationeditoruimanager", ({ uiManager: manager }) => {
+      uiManager = manager;
+
+      const button = document.getElementById("editorStampButton_OK");
+      const button1 = document.getElementById("editorStampButton_CROSS");
+      const button2 = document.getElementById("editorStampButton_QUESTION");
+      if (!button && !button1 && !button2) return;
+
+      button.addEventListener("click", async () => {
+        const { pdfViewer, pdfDocument, l10n } = PDFViewerApplication;
+
+        try {
+          uiManager.enableWaiting?.(true);
+
+          await addStaticStamp({
+            pdfViewer,
+            annotationEditorUIManager: uiManager,
+            pdfDocument,
+            l10n,
+            imageUrl: "images/annotation-tick.svg",
+            x: 100,
+            y: 100,
+            width: 25,
+            height: 25,
+          });
+
+          uiManager.enableWaiting?.(false);
+        } catch (err) {
+          console.error("❌ Failed to insert static stamp:", err);
+        }
+      });
+      button1.addEventListener("click", async () => {
+        const { pdfViewer, pdfDocument, l10n } = PDFViewerApplication;
+
+        try {
+          uiManager.enableWaiting?.(true);
+
+          await addStaticStamp({
+            pdfViewer,
+            annotationEditorUIManager: uiManager,
+            pdfDocument,
+            l10n,
+            imageUrl: "images/annotation-cross.svg",
+            x: 100,
+            y: 100,
+            width: 25,
+            height: 25,
+          });
+
+          uiManager.enableWaiting?.(false);
+        } catch (err) {
+          console.error("❌ Failed to insert static stamp:", err);
+        }
+      });
+      button2.addEventListener("click", async () => {
+        const { pdfViewer, pdfDocument, l10n } = PDFViewerApplication;
+
+        try {
+          uiManager.enableWaiting?.(true);
+
+          await addStaticStamp({
+            pdfViewer,
+            annotationEditorUIManager: uiManager,
+            pdfDocument,
+            l10n,
+            imageUrl: "images/annotation-fragemark.svg",
+            x: 100,
+            y: 100,
+            width: 25,
+            height: 25,
+          });
+
+          uiManager.enableWaiting?.(false);
+        } catch (err) {
+          console.error("❌ Failed to insert static stamp:", err);
+        }
+      });
+
+    });
+
+
     // The non-button elements within the toolbar.
     pageNumber.addEventListener("click", function () {
       this.select();
@@ -290,8 +419,6 @@ class Toolbar {
 
   #editorModeChanged({ mode }) {
     const {
-      editorCommentButton,
-      editorCommentParamsToolbar,
       editorFreeTextButton,
       editorFreeTextParamsToolbar,
       editorHighlightButton,
@@ -299,16 +426,15 @@ class Toolbar {
       editorInkButton,
       editorInkParamsToolbar,
       editorStampButton,
+      editorStampButton_OK,
+      editorStampButton_CROSS,
+      editorStampButton_QUESTION,
       editorStampParamsToolbar,
+      editorStampParamsToolbar_OK,
       editorSignatureButton,
       editorSignatureParamsToolbar,
     } = this.#opts;
 
-    toggleExpandedBtn(
-      editorCommentButton,
-      mode === AnnotationEditorType.POPUP,
-      editorCommentParamsToolbar
-    );
     toggleExpandedBtn(
       editorFreeTextButton,
       mode === AnnotationEditorType.FREETEXT,
@@ -330,18 +456,35 @@ class Toolbar {
       editorStampParamsToolbar
     );
     toggleExpandedBtn(
+      editorStampButton_OK,
+      mode === AnnotationEditorType.STAMP,
+      editorStampParamsToolbar
+    );
+    toggleExpandedBtn(
+      editorStampButton_CROSS,
+      mode === AnnotationEditorType.STAMP,
+      editorStampParamsToolbar
+    );
+    toggleExpandedBtn(
+      editorStampButton_QUESTION,
+      mode === AnnotationEditorType.STAMP,
+      editorStampParamsToolbar
+    );
+    toggleExpandedBtn(
       editorSignatureButton,
       mode === AnnotationEditorType.SIGNATURE,
       editorSignatureParamsToolbar
     );
 
-    editorCommentButton.disabled =
-      editorFreeTextButton.disabled =
-      editorHighlightButton.disabled =
-      editorInkButton.disabled =
-      editorStampButton.disabled =
-      editorSignatureButton.disabled =
-        mode === AnnotationEditorType.DISABLE;
+    const isDisable = mode === AnnotationEditorType.DISABLE;
+    editorFreeTextButton.disabled = isDisable;
+    editorHighlightButton.disabled = isDisable;
+    editorInkButton.disabled = isDisable;
+    editorStampButton.disabled = isDisable;
+    editorStampButton_OK.disabled = isDisable;
+    editorStampButton_CROSS.disabled = isDisable;
+    editorStampButton_QUESTION.disabled = isDisable;
+    editorSignatureButton.disabled = isDisable;
   }
 
   #updateUIState(resetNumPages = false) {
@@ -404,8 +547,8 @@ class Toolbar {
 
   updateLoadingIndicatorState(loading = false) {
     const { pageNumber } = this.#opts;
+
     pageNumber.classList.toggle("loading", loading);
   }
 }
-
 export { Toolbar };

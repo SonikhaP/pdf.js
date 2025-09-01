@@ -878,20 +878,6 @@ describe("api", function () {
 
       await loadingTask.destroy();
     });
-
-    it("Doesn't iterate over all empty slots in the xref entries (bug 1980958)", async function () {
-      if (isNodeJS) {
-        pending("Worker is not supported in Node.js.");
-      }
-      const loadingTask = getDocument(buildGetDocumentParams("bug1980958.pdf"));
-      const { promise, resolve } = Promise.withResolvers();
-      setTimeout(() => resolve(null), 1000);
-
-      const pdfDocument = await Promise.race([loadingTask.promise, promise]);
-      expect(pdfDocument?.numPages).toEqual(1);
-
-      loadingTask._worker.destroy();
-    });
   });
 
   describe("PDFWorker", function () {
@@ -1774,8 +1760,6 @@ describe("api", function () {
             strokeColor: null,
             fillColor: null,
             rotation: 0,
-            datetimeFormat: undefined,
-            hasDatetimeHTML: false,
             type: "text",
           },
         ],
@@ -3219,94 +3203,6 @@ describe("api", function () {
         });
       });
     });
-
-    describe("Get annotations by their types in the document", function () {
-      it("gets editable annotations", async function () {
-        const loadingTask = getDocument(
-          buildGetDocumentParams("tracemonkey_with_editable_annotations.pdf")
-        );
-        const pdfDoc = await loadingTask.promise;
-
-        // Get all the editable annotations in the document.
-        let editableAnnotations = (
-          await pdfDoc.getAnnotationsByType(
-            new Set([
-              AnnotationType.FREETEXT,
-              AnnotationType.STAMP,
-              AnnotationType.INK,
-              AnnotationType.HIGHLIGHT,
-            ]),
-            null
-          )
-        ).map(annotation => ({
-          id: annotation.id,
-          subtype: annotation.subtype,
-          pageIndex: annotation.pageIndex,
-        }));
-        editableAnnotations.sort((a, b) => a.id.localeCompare(b.id));
-        expect(editableAnnotations).toEqual([
-          { id: "1000R", subtype: "FreeText", pageIndex: 12 },
-          { id: "1001R", subtype: "Stamp", pageIndex: 12 },
-          { id: "1011R", subtype: "Stamp", pageIndex: 13 },
-          { id: "997R", subtype: "Ink", pageIndex: 13 },
-          { id: "998R", subtype: "Highlight", pageIndex: 13 },
-        ]);
-
-        // Get all the editable annotations but the ones on page 12.
-        editableAnnotations = (
-          await pdfDoc.getAnnotationsByType(
-            new Set([AnnotationType.STAMP, AnnotationType.HIGHLIGHT]),
-            new Set([12])
-          )
-        ).map(annotation => ({
-          id: annotation.id,
-          subtype: annotation.subtype,
-          pageIndex: annotation.pageIndex,
-        }));
-        editableAnnotations.sort((a, b) => a.id.localeCompare(b.id));
-        expect(editableAnnotations).toEqual([
-          { id: "1011R", subtype: "Stamp", pageIndex: 13 },
-          { id: "998R", subtype: "Highlight", pageIndex: 13 },
-        ]);
-        await loadingTask.destroy();
-      });
-
-      it("gets editable annotations after getting annotations on page 13", async function () {
-        const loadingTask = getDocument(
-          buildGetDocumentParams("tracemonkey_with_editable_annotations.pdf")
-        );
-        const pdfDoc = await loadingTask.promise;
-        const pdfPage = await pdfDoc.getPage(13);
-        await pdfPage.getAnnotations();
-
-        // Get all the editable annotations in the document.
-        const editableAnnotations = (
-          await pdfDoc.getAnnotationsByType(
-            new Set([
-              AnnotationType.FREETEXT,
-              AnnotationType.STAMP,
-              AnnotationType.INK,
-              AnnotationType.HIGHLIGHT,
-            ]),
-            null
-          )
-        ).map(annotation => ({
-          id: annotation.id,
-          subtype: annotation.subtype,
-          pageIndex: annotation.pageIndex,
-        }));
-        editableAnnotations.sort((a, b) => a.id.localeCompare(b.id));
-        expect(editableAnnotations).toEqual([
-          { id: "1000R", subtype: "FreeText", pageIndex: 12 },
-          { id: "1001R", subtype: "Stamp", pageIndex: 12 },
-          { id: "1011R", subtype: "Stamp", pageIndex: 13 },
-          { id: "997R", subtype: "Ink", pageIndex: 13 },
-          { id: "998R", subtype: "Highlight", pageIndex: 13 },
-        ]);
-
-        await loadingTask.destroy();
-      });
-    });
   });
 
   describe("Page", function () {
@@ -4514,7 +4410,7 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
         viewport.height
       );
       const renderTask = pdfPage.render({
-        canvas: canvasAndCtx.canvas,
+        canvasContext: canvasAndCtx.context,
         viewport,
       });
       expect(renderTask instanceof RenderTask).toEqual(true);
@@ -4550,7 +4446,7 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
         viewport.height
       );
       const renderTask = page.render({
-        canvas: canvasAndCtx.canvas,
+        canvasContext: canvasAndCtx.context,
         viewport,
       });
       expect(renderTask instanceof RenderTask).toEqual(true);
@@ -4581,7 +4477,7 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
         viewport.height
       );
       const renderTask = page.render({
-        canvas: canvasAndCtx.canvas,
+        canvasContext: canvasAndCtx.context,
         viewport,
       });
       expect(renderTask instanceof RenderTask).toEqual(true);
@@ -4598,7 +4494,7 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
       }
 
       const reRenderTask = page.render({
-        canvas: canvasAndCtx.canvas,
+        canvasContext: canvasAndCtx.context,
         viewport,
       });
       expect(reRenderTask instanceof RenderTask).toEqual(true);
@@ -4622,14 +4518,14 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
         viewport.height
       );
       const renderTask1 = page.render({
-        canvas: canvasAndCtx.canvas,
+        canvasContext: canvasAndCtx.context,
         viewport,
         optionalContentConfigPromise,
       });
       expect(renderTask1 instanceof RenderTask).toEqual(true);
 
       const renderTask2 = page.render({
-        canvas: canvasAndCtx.canvas,
+        canvasContext: canvasAndCtx.context,
         viewport,
         optionalContentConfigPromise,
       });
@@ -4666,7 +4562,7 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
         viewport.height
       );
       const renderTask = pdfPage.render({
-        canvas: canvasAndCtx.canvas,
+        canvasContext: canvasAndCtx.context,
         viewport,
       });
       expect(renderTask instanceof RenderTask).toEqual(true);
@@ -4695,7 +4591,7 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
         viewport.height
       );
       const renderTask = pdfPage.render({
-        canvas: canvasAndCtx.canvas,
+        canvasContext: canvasAndCtx.context,
         viewport,
         background: "#FF0000", // See comment below.
       });
@@ -4755,7 +4651,7 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
           viewport.height
         );
         const renderTask = pdfPage.render({
-          canvas: canvasAndCtx.canvas,
+          canvasContext: canvasAndCtx.context,
           viewport,
         });
 
@@ -4859,7 +4755,7 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
           viewport.height
         );
         const renderTask = pdfPage.render({
-          canvas: canvasAndCtx.canvas,
+          canvasContext: canvasAndCtx.context,
           viewport,
         });
 
@@ -4906,7 +4802,7 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
           viewport.height
         );
         const renderTask = pdfPage.render({
-          canvas: canvasAndCtx.canvas,
+          canvasContext: canvasAndCtx.context,
           viewport,
         });
 
@@ -4956,7 +4852,7 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
           viewport.height
         );
         const renderTask = pdfPage.render({
-          canvas: canvasAndCtx.canvas,
+          canvasContext: canvasAndCtx.context,
           viewport,
           intent: "print",
           annotationMode: AnnotationMode.ENABLE_STORAGE,
@@ -5015,34 +4911,6 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
 
       await loadingTask.destroy();
     });
-
-    it("should work with the legacy canvasContext parameter", async function () {
-      const loadingTask = getDocument(tracemonkeyGetDocumentParams);
-      const pdfDoc = await loadingTask.promise;
-      const pdfPage = await pdfDoc.getPage(1);
-      const viewport = pdfPage.getViewport({ scale: 1 });
-
-      const { canvasFactory } = pdfDoc;
-      const canvasAndCtx = canvasFactory.create(
-        viewport.width,
-        viewport.height
-      );
-      const renderTask = pdfPage.render({
-        canvasContext: canvasAndCtx.context,
-        viewport,
-      });
-      expect(renderTask instanceof RenderTask).toEqual(true);
-
-      await renderTask.promise;
-      expect(
-        canvasAndCtx.context
-          .getImageData(0, 0, viewport.width, viewport.height)
-          .data.some(channel => channel !== 0)
-      ).toEqual(true);
-
-      canvasFactory.destroy(canvasAndCtx);
-      await loadingTask.destroy();
-    });
   });
 
   describe("Multiple `getDocument` instances", function () {
@@ -5071,7 +4939,7 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
         viewport.height
       );
       const renderTask = page.render({
-        canvas: canvasAndCtx.canvas,
+        canvasContext: canvasAndCtx.context,
         viewport,
       });
       await renderTask.promise;
@@ -5258,48 +5126,5 @@ Caron Broadcasting, Inc., an Ohio corporation (“Lessee”).`)
         await loadingTask.destroy();
       }
     );
-  });
-
-  describe("Annotations", function () {
-    it("should extract the text under some annotations", async function () {
-      const loadingTask = getDocument(buildGetDocumentParams("bug1885505.pdf"));
-      const pdfDoc = await loadingTask.promise;
-
-      const page1 = await pdfDoc.getPage(1);
-      const annots = await page1.getAnnotations();
-      let annot = annots.find(x => x.id === "56R");
-      expect(annot.overlaidText).toEqual("Languages");
-
-      annot = annots.find(x => x.id === "52R");
-      expect(annot.overlaidText)
-        .toEqual(`Dynamic languages such as JavaScript are more difﬁcult to com-
-pile than statically typed ones. Since no concrete type information
-is available, traditional compilers`);
-
-      annot = annots.find(x => x.id === "54R");
-      expect(annot.overlaidText)
-        .toEqual(`typed ones. Since no concrete type information
-is available, traditional compilers need to emit generic code that can
-handle all possible type combinations at runtime. We present an al-
-ternative compilation technique for dynamically-`);
-
-      annot = annots.find(x => x.id === "58R");
-      expect(annot.overlaidText).toEqual("machine");
-
-      annot = annots.find(x => x.id === "60R");
-      expect(annot.overlaidText)
-        .toEqual(`paths through nested loops. We have implemented
-a dynamic compiler for JavaScript based on our`);
-
-      annot = annots.find(x => x.id === "65R");
-      expect(annot.overlaidText).toEqual("Experimentation,");
-
-      annot = annots.find(x => x.id === "63R");
-      expect(annot.overlaidText)
-        .toEqual(`languages such as JavaScript, Python, and Ruby, are pop-
-ular since they are expressive, accessible to non-experts, and make
-deployment as easy as distributing a source ﬁle. They are used for
-small scripts as well as for`);
-    });
   });
 });

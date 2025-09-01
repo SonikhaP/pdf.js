@@ -26,7 +26,6 @@ import {
 } from "../../shared/util.js";
 import { AnnotationEditorUIManager, KeyboardManager } from "./tools.js";
 import { AnnotationEditor } from "./editor.js";
-import { BasicColorPicker } from "./color_picker.js";
 import { FreeTextAnnotationElement } from "../annotation_layer.js";
 
 const EOL_PATTERN = /\r\n?|\n/g;
@@ -44,8 +43,6 @@ class FreeTextEditor extends AnnotationEditor {
   #editModeAC = null;
 
   #fontSize;
-
-  _colorPicker = null;
 
   static _freeTextDefaultContent = "";
 
@@ -134,9 +131,6 @@ class FreeTextEditor extends AnnotationEditor {
       FreeTextEditor._defaultColor ||
       AnnotationEditor._defaultLineColor;
     this.#fontSize = params.fontSize || FreeTextEditor._defaultFontSize;
-    if (!this.annotationElementId) {
-      this._uiManager.a11yAlert("pdfjs-editor-freetext-added-alert");
-    }
   }
 
   /** @inheritdoc */
@@ -205,20 +199,6 @@ class FreeTextEditor extends AnnotationEditor {
     ];
   }
 
-  /** @inheritdoc */
-  get toolbarButtons() {
-    this._colorPicker ||= new BasicColorPicker(this);
-    return [["colorPicker", this._colorPicker]];
-  }
-
-  get colorType() {
-    return AnnotationEditorParamsType.FREETEXT_COLOR;
-  }
-
-  get colorValue() {
-    return this.#color;
-  }
-
   /**
    * Update the font size and make this action as undoable.
    * @param {number} fontSize
@@ -249,7 +229,6 @@ class FreeTextEditor extends AnnotationEditor {
   #updateColor(color) {
     const setColor = col => {
       this.#color = this.editorDiv.style.color = col;
-      this._colorPicker?.update(col);
     };
     const savedColor = this.#color;
     this.addCommands({
@@ -771,12 +750,6 @@ class FreeTextEditor extends AnnotationEditor {
   }
 
   /** @inheritdoc */
-  getPDFRect() {
-    const padding = FreeTextEditor._internalPadding * this.parentScale;
-    return this.getRect(padding, padding);
-  }
-
-  /** @inheritdoc */
   static async deserialize(data, parent, uiManager) {
     let initialData = null;
     if (data instanceof FreeTextAnnotationElement) {
@@ -787,7 +760,6 @@ class FreeTextEditor extends AnnotationEditor {
           rotation,
           id,
           popupRef,
-          contentsObj,
         },
         textContent,
         textPosition,
@@ -810,21 +782,17 @@ class FreeTextEditor extends AnnotationEditor {
         pageIndex: pageNumber - 1,
         rect: rect.slice(0),
         rotation,
-        annotationElementId: id,
         id,
         deleted: false,
         popupRef,
-        comment: contentsObj?.str || null,
       };
     }
     const editor = await super.deserialize(data, parent, uiManager);
     editor.#fontSize = data.fontSize;
     editor.#color = Util.makeHexColor(...data.color);
     editor.#content = FreeTextEditor.#deserializeContent(data.value);
+    editor.annotationElementId = data.id || null;
     editor._initialData = initialData;
-    if (data.comment) {
-      editor.setCommentData(data.comment);
-    }
 
     return editor;
   }
@@ -839,7 +807,8 @@ class FreeTextEditor extends AnnotationEditor {
       return this.serializeDeleted();
     }
 
-    const rect = this.getPDFRect();
+    const padding = FreeTextEditor._internalPadding * this.parentScale;
+    const rect = this.getRect(padding, padding);
     const color = AnnotationEditor._colorManager.convert(
       this.isAttachedToDOM
         ? getComputedStyle(this.editorDiv).color
@@ -856,7 +825,6 @@ class FreeTextEditor extends AnnotationEditor {
       rotation: this.rotation,
       structTreeParentId: this._structTreeParentId,
     };
-    this.addComment(serialized);
 
     if (isForCopying) {
       // Don't add the id when copying because the pasted editor mustn't be
@@ -878,7 +846,6 @@ class FreeTextEditor extends AnnotationEditor {
     const { value, fontSize, color, pageIndex } = this._initialData;
 
     return (
-      this.hasEditedComment ||
       this._hasBeenMoved ||
       serialized.value !== value ||
       serialized.fontSize !== fontSize ||
@@ -890,8 +857,8 @@ class FreeTextEditor extends AnnotationEditor {
   /** @inheritdoc */
   renderAnnotationElement(annotation) {
     const content = super.renderAnnotationElement(annotation);
-    if (!content) {
-      return null;
+    if (this.deleted) {
+      return content;
     }
     const { style } = content;
     style.fontSize = `calc(${this.#fontSize}px * var(--total-scale-factor))`;
@@ -906,13 +873,11 @@ class FreeTextEditor extends AnnotationEditor {
       content.append(div);
     }
 
-    const params = {
-      rect: this.getPDFRect(),
-    };
-    params.popup = this.hasEditedComment
-      ? this.comment
-      : { text: this.#content };
-    annotation.updateEdited(params);
+    const padding = FreeTextEditor._internalPadding * this.parentScale;
+    annotation.updateEdited({
+      rect: this.getRect(padding, padding),
+      popupContent: this.#content,
+    });
 
     return content;
   }

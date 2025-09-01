@@ -34,7 +34,7 @@ import {
   PixelsPerInch,
   stopEvent,
 } from "../display_utils.js";
-import { FloatingToolbar } from "./toolbar.js";
+import { HighlightToolbar } from "./toolbar.js";
 
 function bindEvents(obj, element, names) {
   for (const name of names) {
@@ -585,8 +585,6 @@ class AnnotationEditorUIManager {
 
   #activeEditor = null;
 
-  #allEditableAnnotations = null;
-
   #allEditors = new Map();
 
   #allLayers = new Map();
@@ -598,8 +596,6 @@ class AnnotationEditorUIManager {
   #changedExistingAnnotations = null;
 
   #commandManager = new CommandManager();
-
-  #commentManager = null;
 
   #copyPasteAC = null;
 
@@ -633,13 +629,11 @@ class AnnotationEditorUIManager {
 
   #highlightWhenShiftUp = false;
 
-  #floatingToolbar = null;
+  #highlightToolbar = null;
 
   #idManager = new IdManager();
 
   #isEnabled = false;
-
-  #isPointerDown = false;
 
   #isWaiting = false;
 
@@ -665,8 +659,6 @@ class AnnotationEditorUIManager {
 
   #showAllStates = null;
 
-  #pdfDocument = null;
-
   #previousStates = {
     isEditing: false,
     isEmpty: true,
@@ -683,8 +675,6 @@ class AnnotationEditorUIManager {
   #container = null;
 
   #viewer = null;
-
-  #viewerAlert = null;
 
   #updateModeCapability = null;
 
@@ -828,9 +818,7 @@ class AnnotationEditorUIManager {
   constructor(
     container,
     viewer,
-    viewerAlert,
     altTextManager,
-    commentManager,
     signatureManager,
     eventBus,
     pdfDocument,
@@ -846,11 +834,8 @@ class AnnotationEditorUIManager {
     const signal = (this._signal = this.#abortController.signal);
     this.#container = container;
     this.#viewer = viewer;
-    this.#viewerAlert = viewerAlert;
     this.#altTextManager = altTextManager;
-    this.#commentManager = commentManager;
     this.#signatureManager = signatureManager;
-    this.#pdfDocument = pdfDocument;
     this._eventBus = eventBus;
     eventBus._on("editingaction", this.onEditingAction.bind(this), { signal });
     eventBus._on("pagechanging", this.onPageChanging.bind(this), { signal });
@@ -863,20 +848,6 @@ class AnnotationEditorUIManager {
       "switchannotationeditorparams",
       evt => this.updateParams(evt.type, evt.value),
       { signal }
-    );
-    window.addEventListener(
-      "pointerdown",
-      () => {
-        this.#isPointerDown = true;
-      },
-      { capture: true, signal }
-    );
-    window.addEventListener(
-      "pointerup",
-      () => {
-        this.#isPointerDown = false;
-      },
-      { capture: true, signal }
     );
     this.#addSelectionListener();
     this.#addDragAndDropListeners();
@@ -896,7 +867,6 @@ class AnnotationEditorUIManager {
     this.isShiftKeyDown = false;
     this._editorUndoBar = editorUndoBar || null;
     this._supportsPinchToZoom = supportsPinchToZoom !== false;
-    commentManager?.setSidebarUiManager(this);
 
     if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("TESTING")) {
       Object.defineProperty(this, "reset", {
@@ -928,13 +898,11 @@ class AnnotationEditorUIManager {
     this.#selectedEditors.clear();
     this.#commandManager.destroy();
     this.#altTextManager?.destroy();
-    this.#commentManager?.destroy();
     this.#signatureManager?.destroy();
-    this.#floatingToolbar?.hide();
-    this.#floatingToolbar = null;
+    this.#highlightToolbar?.hide();
+    this.#highlightToolbar = null;
     this.#mainHighlightColorPicker?.destroy();
     this.#mainHighlightColorPicker = null;
-    this.#allEditableAnnotations = null;
     if (this.#focusMainContainerTimeoutId) {
       clearTimeout(this.#focusMainContainerTimeoutId);
       this.#focusMainContainerTimeoutId = null;
@@ -944,7 +912,6 @@ class AnnotationEditorUIManager {
       this.#translationTimeoutId = null;
     }
     this._editorUndoBar?.destroy();
-    this.#pdfDocument = null;
   }
 
   combinedSignal(ac) {
@@ -984,40 +951,18 @@ class AnnotationEditorUIManager {
     );
   }
 
-  get _highlightColors() {
+  get highlightColors() {
     return shadow(
       this,
-      "_highlightColors",
+      "highlightColors",
       this.#highlightColors
         ? new Map(
-            this.#highlightColors.split(",").map(pair => {
-              pair = pair.split("=").map(x => x.trim());
-              pair[1] = pair[1].toUpperCase();
-              return pair;
-            })
+            this.#highlightColors
+              .split(",")
+              .map(pair => pair.split("=").map(x => x.trim()))
           )
         : null
     );
-  }
-
-  get highlightColors() {
-    const { _highlightColors } = this;
-    if (!_highlightColors) {
-      return shadow(this, "highlightColors", null);
-    }
-    const map = new Map();
-    const hasHCM = !!this.#pageColors;
-    for (const [name, color] of _highlightColors) {
-      const isNameForHCM = name.endsWith("_HCM");
-      if (hasHCM && isNameForHCM) {
-        map.set(name.replace("_HCM", ""), color);
-        continue;
-      }
-      if (!hasHCM && !isNameForHCM) {
-        map.set(name, color);
-      }
-    }
-    return shadow(this, "highlightColors", map);
   }
 
   get highlightColorNames() {
@@ -1028,18 +973,6 @@ class AnnotationEditorUIManager {
         ? new Map(Array.from(this.highlightColors, e => e.reverse()))
         : null
     );
-  }
-
-  getNonHCMColor(color) {
-    if (!this._highlightColors) {
-      return color;
-    }
-    const colorName = this.highlightColorNames.get(color);
-    return this._highlightColors.get(colorName) || color;
-  }
-
-  getNonHCMColorName(color) {
-    return this.highlightColorNames.get(color) || color;
   }
 
   /**
@@ -1062,35 +995,6 @@ class AnnotationEditorUIManager {
 
   editAltText(editor, firstTime = false) {
     this.#altTextManager?.editAltText(this, editor, firstTime);
-  }
-
-  hasCommentManager() {
-    return !!this.#commentManager;
-  }
-
-  editComment(editor, position) {
-    this.#commentManager?.open(this, editor, position);
-  }
-
-  showComment(pageIndex, uid) {
-    const layer = this.#allLayers.get(pageIndex);
-    const editor = layer?.getEditorByUID(uid);
-    editor?.showComment();
-  }
-
-  async waitForPageRendered(pageNumber) {
-    if (this.#allLayers.has(pageNumber - 1)) {
-      return;
-    }
-    const { resolve, promise } = Promise.withResolvers();
-    const onPageRendered = evt => {
-      if (evt.pageNumber === pageNumber) {
-        this._eventBus._off("annotationeditorlayerrendered", onPageRendered);
-        resolve();
-      }
-    };
-    this._eventBus.on("annotationeditorlayerrendered", onPageRendered);
-    await promise;
   }
 
   getSignature(editor) {
@@ -1202,7 +1106,7 @@ class AnnotationEditorUIManager {
     return null;
   }
 
-  highlightSelection(methodOfCreation = "", comment = false) {
+  highlightSelection(methodOfCreation = "") {
     const selection = document.getSelection();
     if (!selection || selection.isCollapsed) {
       return;
@@ -1220,7 +1124,7 @@ class AnnotationEditorUIManager {
     const layer = this.#getLayerForTextLayer(textLayer);
     const isNoneMode = this.#mode === AnnotationEditorType.NONE;
     const callback = () => {
-      const editor = layer?.createAndAddNewEditor({ x: 0, y: 0 }, false, {
+      layer?.createAndAddNewEditor({ x: 0, y: 0 }, false, {
         methodOfCreation,
         boxes,
         anchorNode,
@@ -1232,9 +1136,6 @@ class AnnotationEditorUIManager {
       if (isNoneMode) {
         this.showAllEditors("highlight", true, /* updateButton = */ true);
       }
-      if (comment) {
-        editor?.editComment();
-      }
     };
     if (isNoneMode) {
       this.switchToMode(AnnotationEditorType.HIGHLIGHT, callback);
@@ -1243,11 +1144,7 @@ class AnnotationEditorUIManager {
     callback();
   }
 
-  commentSelection(methodOfCreation = "") {
-    this.highlightSelection(methodOfCreation, /* comment */ true);
-  }
-
-  #displayFloatingToolbar() {
+  #displayHighlightToolbar() {
     const selection = document.getSelection();
     if (!selection || selection.isCollapsed) {
       return;
@@ -1258,8 +1155,8 @@ class AnnotationEditorUIManager {
     if (!boxes) {
       return;
     }
-    this.#floatingToolbar ||= new FloatingToolbar(this);
-    this.#floatingToolbar.show(textLayer, boxes, this.direction === "ltr");
+    this.#highlightToolbar ||= new HighlightToolbar(this);
+    this.#highlightToolbar.show(textLayer, boxes, this.direction === "ltr");
   }
 
   /**
@@ -1276,24 +1173,11 @@ class AnnotationEditorUIManager {
     }
   }
 
-  a11yAlert(messageId, args = null) {
-    const viewerAlert = this.#viewerAlert;
-    if (!viewerAlert) {
-      return;
-    }
-    viewerAlert.setAttribute("data-l10n-id", messageId);
-    if (args) {
-      viewerAlert.setAttribute("data-l10n-args", JSON.stringify(args));
-    } else {
-      viewerAlert.removeAttribute("data-l10n-args");
-    }
-  }
-
   #selectionChange() {
     const selection = document.getSelection();
     if (!selection || selection.isCollapsed) {
       if (this.#selectedTextNode) {
-        this.#floatingToolbar?.hide();
+        this.#highlightToolbar?.hide();
         this.#selectedTextNode = null;
         this.#dispatchUpdateStates({
           hasSelectedText: false,
@@ -1310,7 +1194,7 @@ class AnnotationEditorUIManager {
     const textLayer = anchorElement.closest(".textLayer");
     if (!textLayer) {
       if (this.#selectedTextNode) {
-        this.#floatingToolbar?.hide();
+        this.#highlightToolbar?.hide();
         this.#selectedTextNode = null;
         this.#dispatchUpdateStates({
           hasSelectedText: false,
@@ -1319,7 +1203,7 @@ class AnnotationEditorUIManager {
       return;
     }
 
-    this.#floatingToolbar?.hide();
+    this.#highlightToolbar?.hide();
     this.#selectedTextNode = anchorNode;
     this.#dispatchUpdateStates({
       hasSelectedText: true,
@@ -1344,30 +1228,22 @@ class AnnotationEditorUIManager {
           : null;
       activeLayer?.toggleDrawing();
 
-      if (this.#isPointerDown) {
-        const ac = new AbortController();
-        const signal = this.combinedSignal(ac);
+      const ac = new AbortController();
+      const signal = this.combinedSignal(ac);
 
-        const pointerup = e => {
-          if (e.type === "pointerup" && e.button !== 0) {
-            // Do nothing on right click.
-            return;
-          }
-          ac.abort();
-          activeLayer?.toggleDrawing(true);
-          if (e.type === "pointerup") {
-            this.#onSelectEnd("main_toolbar");
-          }
-        };
-        window.addEventListener("pointerup", pointerup, { signal });
-        window.addEventListener("blur", pointerup, { signal });
-      } else {
-        // Here neither the shift key nor the pointer is down and we've
-        // something in the selection: we can be in the case where the user is
-        // using a screen reader (see bug 1976597).
+      const pointerup = e => {
+        if (e.type === "pointerup" && e.button !== 0) {
+          // Do nothing on right click.
+          return;
+        }
+        ac.abort();
         activeLayer?.toggleDrawing(true);
-        this.#onSelectEnd("main_toolbar");
-      }
+        if (e.type === "pointerup") {
+          this.#onSelectEnd("main_toolbar");
+        }
+      };
+      window.addEventListener("pointerup", pointerup, { signal });
+      window.addEventListener("blur", pointerup, { signal });
     }
   }
 
@@ -1375,7 +1251,7 @@ class AnnotationEditorUIManager {
     if (this.#mode === AnnotationEditorType.HIGHLIGHT) {
       this.highlightSelection(methodOfCreation);
     } else if (this.#enableHighlightFloatingButton) {
-      this.#displayFloatingToolbar();
+      this.#displayHighlightToolbar();
     }
   }
 
@@ -1666,9 +1542,6 @@ class AnnotationEditorUIManager {
       case "highlightSelection":
         this.highlightSelection("context_menu");
         break;
-      case "commentSelection":
-        this.commentSelection("context_menu");
-        break;
     }
   }
 
@@ -1792,18 +1665,8 @@ class AnnotationEditorUIManager {
    * @param {string|null} editId
    * @param {boolean} [isFromKeyboard] - true if the mode change is due to a
    *   keyboard action.
-   * @param {boolean} [mustEnterInEditMode] - true if the editor must enter in
-   *   edit mode.
-   * @param {boolean} [editComment] - true if the mode change is due to a
-   *   comment edit.
    */
-  async updateMode(
-    mode,
-    editId = null,
-    isFromKeyboard = false,
-    mustEnterInEditMode = false,
-    editComment = false
-  ) {
+  async updateMode(mode, editId = null, isFromKeyboard = false) {
     if (this.#mode === mode) {
       return;
     }
@@ -1819,13 +1682,6 @@ class AnnotationEditorUIManager {
     this.#updateModeCapability = Promise.withResolvers();
     this.#currentDrawingSession?.commitOrRemove();
 
-    if (this.#mode === AnnotationEditorType.POPUP) {
-      this.#commentManager?.hideSidebar();
-      for (const editor of this.#allEditors.values()) {
-        editor.removeStandaloneCommentButton();
-      }
-    }
-
     this.#mode = mode;
     if (mode === AnnotationEditorType.NONE) {
       this.setEditingState(false);
@@ -1836,51 +1692,15 @@ class AnnotationEditorUIManager {
       this.#updateModeCapability.resolve();
       return;
     }
-
     if (mode === AnnotationEditorType.SIGNATURE) {
       await this.#signatureManager?.loadSignatures();
     }
-
     this.setEditingState(true);
     await this.#enableAll();
     this.unselectAll();
     for (const layer of this.#allLayers.values()) {
       layer.updateMode(mode);
     }
-
-    if (mode === AnnotationEditorType.POPUP) {
-      this.#allEditableAnnotations ||=
-        await this.#pdfDocument.getAnnotationsByType(
-          new Set(this.#editorTypes.map(editorClass => editorClass._editorType))
-        );
-      const elementIds = new Set();
-      const allComments = [];
-      for (const editor of this.#allEditors.values()) {
-        const { annotationElementId, hasComment, deleted } = editor;
-        if (annotationElementId) {
-          elementIds.add(annotationElementId);
-        }
-        if (hasComment && !deleted) {
-          allComments.push(editor.getData());
-          editor.addStandaloneCommentButton();
-        }
-      }
-      for (const annotation of this.#allEditableAnnotations) {
-        const { id, popupRef, contentsObj } = annotation;
-        if (
-          popupRef &&
-          contentsObj?.str &&
-          !elementIds.has(id) &&
-          !this.#deletedAnnotationsElementIds.has(id)
-        ) {
-          // The annotation exists in the PDF and has a comment but there
-          // is no editor for it (anymore).
-          allComments.push(annotation);
-        }
-      }
-      this.#commentManager?.showSidebar(allComments);
-    }
-
     if (!editId) {
       if (isFromKeyboard) {
         this.addNewEditorFromKeyboard();
@@ -1893,11 +1713,7 @@ class AnnotationEditorUIManager {
     for (const editor of this.#allEditors.values()) {
       if (editor.annotationElementId === editId || editor.id === editId) {
         this.setSelected(editor);
-        if (editComment) {
-          editor.editComment();
-        } else if (mustEnterInEditMode) {
-          editor.enterInEditMode();
-        }
+        editor.enterInEditMode();
       } else {
         editor.unselect();
       }
@@ -1942,6 +1758,9 @@ class AnnotationEditorUIManager {
       case AnnotationEditorParamsType.CREATE:
         this.currentLayer.addNewEditor(value);
         return;
+      case AnnotationEditorParamsType.HIGHLIGHT_DEFAULT_COLOR:
+        this.#mainHighlightColorPicker?.updateColor(value);
+        break;
       case AnnotationEditorParamsType.HIGHLIGHT_SHOW_ALL:
         this._eventBus.dispatch("reporttelemetry", {
           source: this,
@@ -1958,14 +1777,12 @@ class AnnotationEditorUIManager {
         break;
     }
 
-    if (this.hasSelection) {
-      for (const editor of this.#selectedEditors) {
-        editor.updateParams(type, value);
-      }
-    } else {
-      for (const editorType of this.#editorTypes) {
-        editorType.updateDefaultParams(type, value);
-      }
+    for (const editor of this.#selectedEditors) {
+      editor.updateParams(type, value);
+    }
+
+    for (const editorType of this.#editorTypes) {
+      editorType.updateDefaultParams(type, value);
     }
   }
 
@@ -2200,11 +2017,6 @@ class AnnotationEditorUIManager {
    * @param {AnnotationEditor} editor
    */
   setSelected(editor) {
-    this.updateToolbar({
-      mode: editor.mode,
-      editId: editor.id,
-    });
-
     this.#currentDrawingSession?.commitOrRemove();
     for (const ed of this.#selectedEditors) {
       if (ed !== editor) {

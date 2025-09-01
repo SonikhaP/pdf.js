@@ -290,7 +290,7 @@ class TextLayer {
           const parent = this.#container;
           this.#container = document.createElement("span");
           this.#container.classList.add("markedContent");
-          if (item.id) {
+          if (item.id !== null) {
             this.#container.setAttribute("id", `${item.id}`);
           }
           parent.append(this.#container);

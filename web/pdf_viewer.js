@@ -130,10 +130,6 @@ function isValidAnnotationEditorMode(mode) {
  *   `maxCanvasDim`, it will draw a second canvas on top of the CSS-zoomed one,
  *   that only renders the part of the page that is close to the viewport.
  *   The default value is `true`.
- * @property {boolean} [enableOptimizedPartialRendering] - When enabled, PDF
- *   rendering will keep track of which areas of the page each PDF operation
- *   affects. Then, when rendering a partial page (if `enableDetailCanvas` is
- *   enabled), it will only run through the operations that affect that portion.
  * @property {IL10n} [l10n] - Localization service.
  * @property {boolean} [enablePermissions] - Enables PDF document permissions,
  *   when they exist. The default value is `false`.
@@ -234,8 +230,6 @@ class PDFViewer {
 
   #annotationMode = AnnotationMode.ENABLE_FORMS;
 
-  #commentManager = null;
-
   #containerTopLeft = null;
 
   #editorUndoBar = null;
@@ -257,8 +251,6 @@ class PDFViewer {
   #minDurationToUpdateCanvas = 0;
 
   #mlManager = null;
-
-  #printingAllowed = true;
 
   #scrollTimeoutId = null;
 
@@ -286,8 +278,6 @@ class PDFViewer {
 
   #textLayerMode = TextLayerMode.ENABLE;
 
-  #viewerAlert = null;
-
   /**
    * @param {PDFViewerOptions} options
    */
@@ -301,7 +291,6 @@ class PDFViewer {
     }
     this.container = options.container;
     this.viewer = options.viewer || options.container.firstElementChild;
-    this.#viewerAlert = options.viewerAlert || null;
 
     if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
       if (this.container?.tagName !== "DIV" || this.viewer?.tagName !== "DIV") {
@@ -322,7 +311,6 @@ class PDFViewer {
     this.downloadManager = options.downloadManager || null;
     this.findController = options.findController || null;
     this.#altTextManager = options.altTextManager || null;
-    this.#commentManager = options.commentManager || null;
     this.#signatureManager = options.signatureManager || null;
     this.#editorUndoBar = options.editorUndoBar || null;
 
@@ -352,8 +340,6 @@ class PDFViewer {
     this.maxCanvasDim = options.maxCanvasDim;
     this.capCanvasAreaFactor = options.capCanvasAreaFactor;
     this.enableDetailCanvas = options.enableDetailCanvas ?? true;
-    this.enableOptimizedPartialRendering =
-      options.enableOptimizedPartialRendering ?? false;
     this.l10n = options.l10n;
     if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
       this.l10n ||= new GenericL10n();
@@ -421,10 +407,6 @@ class PDFViewer {
       // Ensure that Fluent is connected in e.g. the COMPONENTS build.
       this.l10n.translate(this.container);
     }
-  }
-
-  get printingAllowed() {
-    return this.#printingAllowed;
   }
 
   get pagesCount() {
@@ -655,9 +637,6 @@ class PDFViewer {
       get downloadManager() {
         return self.downloadManager;
       },
-      get enableComment() {
-        return !!self.#commentManager;
-      },
       get enableScripting() {
         return !!self._scriptingManager;
       },
@@ -687,22 +666,8 @@ class PDFViewer {
       textLayerMode: this.#textLayerMode,
     };
     if (!permissions) {
-      this.#printingAllowed = true;
-      this.eventBus.dispatch("printingallowed", {
-        source: this,
-        isAllowed: this.#printingAllowed,
-      });
-
       return params;
     }
-
-    this.#printingAllowed =
-      permissions.includes(PermissionFlag.PRINT_HIGH_QUALITY) ||
-      permissions.includes(PermissionFlag.PRINT);
-    this.eventBus.dispatch("printingallowed", {
-      source: this,
-      isAllowed: this.#printingAllowed,
-    });
 
     if (
       !permissions.includes(PermissionFlag.COPY) &&
@@ -872,10 +837,6 @@ class PDFViewer {
 
       this.#annotationEditorUIManager?.destroy();
       this.#annotationEditorUIManager = null;
-
-      this.#annotationEditorMode = AnnotationEditorType.NONE;
-
-      this.#printingAllowed = true;
     }
 
     this.pdfDocument = pdfDocument;
@@ -966,9 +927,7 @@ class PDFViewer {
             this.#annotationEditorUIManager = new AnnotationEditorUIManager(
               this.container,
               viewer,
-              this.#viewerAlert,
               this.#altTextManager,
-              this.#commentManager,
               this.#signatureManager,
               eventBus,
               pdfDocument,
@@ -1049,8 +1008,6 @@ class PDFViewer {
             maxCanvasDim: this.maxCanvasDim,
             capCanvasAreaFactor: this.capCanvasAreaFactor,
             enableDetailCanvas: this.enableDetailCanvas,
-            enableOptimizedPartialRendering:
-              this.enableOptimizedPartialRendering,
             pageColors,
             l10n: this.l10n,
             layerProperties: this._layerProperties,
@@ -2440,22 +2397,12 @@ class PDFViewer {
    * @property {string|null} [editId] - ID of the existing annotation to edit.
    * @property {boolean} [isFromKeyboard] - True if the mode change is due to a
    *   keyboard action.
-   * @property {boolean} [mustEnterInEditMode] - True if the editor must enter
-   *   edit mode.
-   * @property {boolean} [editComment] - True if the editor must enter
-   *   comment edit mode.
    */
 
   /**
    * @param {AnnotationEditorModeOptions} options
    */
-  set annotationEditorMode({
-    mode,
-    editId = null,
-    isFromKeyboard = false,
-    mustEnterInEditMode = false,
-    editComment = false,
-  }) {
+  set annotationEditorMode({ mode, editId = null, isFromKeyboard = false }) {
     if (!this.#annotationEditorUIManager) {
       throw new Error(`The AnnotationEditor is not enabled.`);
     }
@@ -2477,9 +2424,7 @@ class PDFViewer {
       await this.#annotationEditorUIManager.updateMode(
         mode,
         editId,
-        isFromKeyboard,
-        mustEnterInEditMode,
-        editComment
+        isFromKeyboard
       );
       if (
         mode !== this.#annotationEditorMode ||

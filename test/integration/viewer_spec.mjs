@@ -20,7 +20,6 @@ import {
   getSpanRectFromText,
   loadAndWait,
   scrollIntoView,
-  waitForPageChanging,
   waitForPageRendered,
 } from "./test_utils.mjs";
 import { PNG } from "pngjs";
@@ -395,13 +394,29 @@ describe("PDF viewer", () => {
     it("must check that canvas perfectly fits the page whatever the zoom level is", async () => {
       await Promise.all(
         pages.map(async ([browserName, page]) => {
+          if (browserName === "chrome") {
+            // Skip the test for Chrome as `scrollIntoView` below hangs since
+            // Puppeteer 24.5.0 and higher.
+            // See https://github.com/mozilla/pdf.js/issues/19811.
+            // TODO: Remove this check once the issue is fixed.
+            return;
+          }
+
           // The pdf has a single page with a red background.
           // We set the viewer background to red, because when screenshoting
           // some part of the viewer background can be visible.
           // But here we don't care about the viewer background: we only
           // care about the page background and the canvas default color.
+
           await page.evaluate(() => {
             document.body.style.background = "#ff0000";
+            const toolbar = document.querySelector(".toolbar");
+            toolbar.style.display = "none";
+          });
+          await page.waitForSelector(".toolbar", { visible: false });
+          await page.evaluate(() => {
+            const p = document.querySelector(`.page[data-page-number="1"]`);
+            p.style.border = "none";
           });
 
           for (let i = 0; ; i++) {
@@ -1201,215 +1216,6 @@ describe("PDF viewer", () => {
               .withContext(`In ${browserName}`)
               .toBe(normalizeRotation(rotation));
           }
-        })
-      );
-    });
-  });
-
-  describe("Filename with a hash sign", () => {
-    let pages;
-
-    beforeEach(async () => {
-      pages = await loadAndWait("empty%23hash.pdf", ".textLayer .endOfContent");
-    });
-
-    afterEach(async () => {
-      await closePages(pages);
-    });
-
-    it("must extract the filename correctly", async () => {
-      await Promise.all(
-        pages.map(async ([browserName, page]) => {
-          const filename = await page.evaluate(() => document.title);
-
-          expect(filename)
-            .withContext(`In ${browserName}`)
-            .toBe("empty#hash.pdf");
-        })
-      );
-    });
-  });
-
-  describe("File param with an URL", () => {
-    let pages;
-
-    beforeEach(async () => {
-      const baseURL = new URL(global.integrationBaseUrl);
-      const url = `${baseURL.origin}/build/generic/web/compressed.tracemonkey-pldi-09.pdf`;
-      pages = await loadAndWait(
-        encodeURIComponent(url),
-        ".textLayer .endOfContent"
-      );
-    });
-
-    afterEach(async () => {
-      await closePages(pages);
-    });
-
-    it("must load and extract the filename correctly", async () => {
-      await Promise.all(
-        pages.map(async ([browserName, page]) => {
-          const filename = await page.evaluate(() => document.title);
-
-          expect(filename)
-            .withContext(`In ${browserName}`)
-            .toBe("compressed.tracemonkey-pldi-09.pdf");
-        })
-      );
-    });
-  });
-
-  describe("Keyboard scrolling on startup (bug 843653)", () => {
-    let pages;
-
-    beforeEach(async () => {
-      pages = await loadAndWait("tracemonkey.pdf", ".textLayer .endOfContent");
-    });
-
-    afterEach(async () => {
-      await closePages(pages);
-    });
-
-    it("must check that keyboard scrolling works without having to give the focus to the viewer", async () => {
-      await Promise.all(
-        pages.map(async ([browserName, page]) => {
-          const pdfViewer = await page.evaluateHandle(
-            () => window.PDFViewerApplication.pdfViewer
-          );
-
-          // The viewer should not have the focus.
-          const hasFocus = await pdfViewer.evaluate(viewer =>
-            viewer.container.contains(document.activeElement)
-          );
-          expect(hasFocus).withContext(`In ${browserName}`).toBeFalse();
-
-          let currentPageNumber = await pdfViewer.evaluate(
-            viewer => viewer.currentPageNumber
-          );
-          expect(currentPageNumber).withContext(`In ${browserName}`).toBe(1);
-
-          // Press the 'PageDown' key to check that it works.
-          const handle = await waitForPageChanging(page);
-          await page.keyboard.press("PageDown");
-          await awaitPromise(handle);
-
-          // The second page should be displayed.
-          currentPageNumber = await pdfViewer.evaluate(
-            viewer => viewer.currentPageNumber
-          );
-          expect(currentPageNumber).withContext(`In ${browserName}`).toBe(2);
-        })
-      );
-    });
-  });
-
-  describe("Printing can be disallowed for some pdfs (bug 1978985)", () => {
-    let pages;
-
-    beforeEach(async () => {
-      pages = await loadAndWait(
-        "print_protection.pdf",
-        "#passwordDialog",
-        null,
-        null,
-        { enablePermissions: true }
-      );
-    });
-
-    afterEach(async () => {
-      await closePages(pages);
-    });
-
-    it("must check that printing is disallowed", async () => {
-      await Promise.all(
-        pages.map(async ([browserName, page]) => {
-          await page.waitForSelector("#printButton", {
-            visible: true,
-          });
-
-          const selector = "#passwordDialog input#password";
-          await page.waitForSelector(selector, { visible: true });
-          await page.type(selector, "1234");
-          await page.click("#passwordDialog button#passwordSubmit");
-
-          await page.waitForSelector(".textLayer .endOfContent");
-
-          // The print button should be hidden.
-          await page.waitForSelector("#printButton", {
-            hidden: true,
-          });
-          await page.waitForSelector("#secondaryPrint", {
-            hidden: true,
-          });
-
-          const hasThrown = await page.evaluate(() => {
-            try {
-              window.print();
-            } catch {
-              return true;
-            }
-            return false;
-          });
-          expect(hasThrown).withContext(`In ${browserName}`).toBeTrue();
-        })
-      );
-    });
-  });
-
-  describe("Pinch-zoom", () => {
-    let pages;
-    beforeEach(async () => {
-      pages = await loadAndWait(
-        "tracemonkey.pdf",
-        `.page[data-page-number = "1"] .endOfContent`
-      );
-    });
-    it("keeps the content under the pinch centre fixed on the screen", async () => {
-      await Promise.all(
-        pages.map(async ([browserName, page]) => {
-          if (browserName === "firefox") {
-            // Firefox does not support touch events on devices
-            // with no touch screen.
-            return;
-          }
-          if (browserName === "chrome") {
-            // Skip the test for Chrome as it doesn't support pinch zoom
-            // emulation for WebDriver BiDi yet.
-            // TODO: Remove this check once the issue is fixed.
-            return;
-          }
-
-          const rect = await getSpanRectFromText(page, 1, "type-stable");
-          const originX = rect.x + rect.width / 2;
-          const originY = rect.y + rect.height / 2;
-          const rendered = await createPromise(page, resolve => {
-            const cb = e => {
-              if (e.pageNumber === 1) {
-                window.PDFViewerApplication.eventBus.off(
-                  "textlayerrendered",
-                  cb
-                );
-                resolve();
-              }
-            };
-            window.PDFViewerApplication.eventBus.on("textlayerrendered", cb);
-          });
-          const client = await page.target().createCDPSession();
-          await client.send("Input.synthesizePinchGesture", {
-            x: originX,
-            y: originY,
-            scaleFactor: 3,
-            gestureSourceType: "touch",
-          });
-          await awaitPromise(rendered);
-          const spanHandle = await page.evaluateHandle(() =>
-            Array.from(
-              document.querySelectorAll(
-                '.page[data-page-number="1"] .textLayer span'
-              )
-            ).find(span => span.textContent.includes("type-stable"))
-          );
-          expect(await spanHandle.isIntersectingViewport()).toBeTrue();
         })
       );
     });

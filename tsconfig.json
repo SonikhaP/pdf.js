@@ -8,6 +8,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
+	"outDir": "dist",
     "paths": {
       "pdfjs-lib": ["./src/pdf"],
       "display-cmap_reader_factory": ["./src/display/cmap_reader_factory"],

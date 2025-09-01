@@ -44,6 +44,7 @@ class TextAccessibilityManager {
    * @returns {number}
    */
   static #compareElementPositions(e1, e2) {
+ 
     const rect1 = e1.getBoundingClientRect();
     const rect2 = e2.getBoundingClientRect();
 

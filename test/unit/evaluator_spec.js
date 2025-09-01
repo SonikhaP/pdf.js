@@ -357,18 +357,6 @@ describe("evaluator", function () {
       expect(result.argsArray).toEqual([]);
       expect(result.fnArray).toEqual([]);
     });
-
-    it("should handle invalid dash stuff", async function () {
-      const stream = new StringStream("[ none ] 0 d");
-      const result = await runOperatorListCheck(
-        partialEvaluator,
-        stream,
-        new ResourcesMock()
-      );
-      expect(result.argsArray[0][0]).toEqual([]);
-      expect(result.argsArray[0][1]).toEqual(0);
-      expect(result.fnArray[0]).toEqual(OPS.setDash);
-    });
   });
 
   describe("thread control", function () {
@@ -433,32 +421,6 @@ describe("evaluator", function () {
 
       expect(operatorList.totalLength).toEqual(2);
       expect(operatorList.length).toEqual(0);
-    });
-  });
-
-  describe("graphics-state operators", function () {
-    it("should convert negative line width to absolute value in the graphic state", async function () {
-      const gState = new Dict();
-      gState.set("LW", -5);
-      const extGState = new Dict();
-      extGState.set("GSneg", gState);
-
-      const resources = new ResourcesMock();
-      resources.ExtGState = extGState;
-
-      const stream = new StringStream("/GSneg gs");
-      const result = await runOperatorListCheck(
-        partialEvaluator,
-        stream,
-        resources
-      );
-
-      expect(result.fnArray).toEqual([OPS.setGState]);
-
-      const stateEntries = result.argsArray[0][0];
-      const lwEntry = stateEntries.find(([key]) => key === "LW");
-      expect(lwEntry).toBeDefined();
-      expect(lwEntry[1]).toEqual(5);
     });
   });
 });

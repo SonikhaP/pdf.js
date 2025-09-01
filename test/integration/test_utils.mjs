@@ -53,11 +53,9 @@ function loadAndWait(filename, selector, zoom, setups, options, viewport) {
           app_options += `&${key}=${encodeURIComponent(value)}`;
         }
       }
-
-      const fileParam = filename.startsWith("http")
-        ? filename
-        : `/test/pdfs/${filename}`;
-      const url = `${global.integrationBaseUrl}?file=${fileParam}#zoom=${zoom ?? "page-fit"}${app_options}`;
+      const url = `${
+        global.integrationBaseUrl
+      }?file=/test/pdfs/${filename}#zoom=${zoom ?? "page-fit"}${app_options}`;
 
       if (setups) {
         // page.evaluateOnNewDocument allows us to run code before the
@@ -543,14 +541,6 @@ async function dragAndDrop(page, selector, translations, steps = 1) {
   await page.waitForSelector("#viewer:not(.noUserSelect)");
 }
 
-function waitForPageChanging(page) {
-  return createPromise(page, resolve => {
-    window.PDFViewerApplication.eventBus.on("pagechanging", resolve, {
-      once: true,
-    });
-  });
-}
-
 function waitForAnnotationEditorLayer(page) {
   return createPromise(page, resolve => {
     window.PDFViewerApplication.eventBus.on(
@@ -631,6 +621,11 @@ async function firstPageOnTop(page) {
     }),
   ]);
   return awaitPromise(handle);
+}
+
+async function hover(page, selector) {
+  const rect = await getRect(page, selector);
+  await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2);
 }
 
 async function setCaretAt(page, pageNumber, text, position) {
@@ -917,6 +912,7 @@ export {
   getSerialized,
   getSpanRectFromText,
   getXY,
+  hover,
   isCanvasMonochrome,
   kbBigMoveDown,
   kbBigMoveLeft,
@@ -952,7 +948,6 @@ export {
   waitForEntryInStorage,
   waitForEvent,
   waitForNoElement,
-  waitForPageChanging,
   waitForPageRendered,
   waitForPointerUp,
   waitForSandboxTrip,

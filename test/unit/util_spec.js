@@ -247,7 +247,6 @@ describe("util", function () {
     it("should get a correctly formatted date", function () {
       const date = new Date(Date.UTC(3141, 5, 9, 2, 6, 53));
       expect(getModificationDate(date)).toEqual("31410609020653");
-      expect(getModificationDate(date.toString())).toEqual("31410609020653");
     });
   });
 

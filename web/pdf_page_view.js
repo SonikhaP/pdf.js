@@ -89,17 +89,14 @@ import { XfaLayerBuilder } from "./xfa_layer_builder.js";
  *   `maxCanvasDim`, it will draw a second canvas on top of the CSS-zoomed one,
  *   that only renders the part of the page that is close to the viewport.
  *   The default value is `true`.
- * @property {boolean} [enableOptimizedPartialRendering] - When enabled, PDF
- *   rendering will keep track of which areas of the page each PDF operation
- *   affects. Then, when rendering a partial page (if `enableDetailCanvas` is
- *   enabled), it will only run through the operations that affect that portion.
- *   The default value is `false`.
  * @property {Object} [pageColors] - Overwrites background and foreground colors
  *   with user defined ones in order to improve readability in high contrast
  *   mode.
  * @property {IL10n} [l10n] - Localization service.
  * @property {Object} [layerProperties] - The object that is used to lookup
  *   the necessary layer-properties.
+ * @property {boolean} [enableHWA] - Enables hardware acceleration for
+ *   rendering. The default value is `false`.
  * @property {boolean} [enableAutoLinking] - Enable creation of hyperlinks from
  *   text that look like URLs. The default value is `true`.
  */
@@ -387,6 +384,7 @@ class PDFPageView extends BasePDFPageView {
     let error = null;
     try {
       await this.annotationLayer.render({
+        page: this.pdfPage, // ✅ ensure this is passed
         viewport: this.viewport,
         intent: "display",
         structTreeLayer: this.structTreeLayer,
@@ -543,8 +541,6 @@ class PDFPageView extends BasePDFPageView {
     keepCanvasWrapper = false,
     preserveDetailViewState = false,
   } = {}) {
-    const keepPdfBugGroups = this.pdfPage?._pdfBug ?? false;
-
     this.cancelRendering({
       keepAnnotationLayer,
       keepAnnotationEditorLayer,
@@ -572,9 +568,6 @@ class PDFPageView extends BasePDFPageView {
         case textLayerNode:
         case canvasWrapperNode:
           continue;
-      }
-      if (keepPdfBugGroups && node.classList.contains("pdfBugGroupsLayer")) {
-        continue;
       }
       node.remove();
       const layerIndex = this.#layers.indexOf(node);
@@ -644,10 +637,7 @@ class PDFPageView extends BasePDFPageView {
         this.maxCanvasPixels > 0 &&
         visibleArea
       ) {
-        this.detailView ??= new PDFPageDetailView({
-          pageView: this,
-          enableOptimizedPartialRendering: this.enableOptimizedPartialRendering,
-        });
+        this.detailView ??= new PDFPageDetailView({ pageView: this });
         this.detailView.update({ visibleArea });
       } else if (this.detailView) {
         this.detailView.reset();
@@ -923,9 +913,9 @@ class PDFPageView extends BasePDFPageView {
     return canvasWrapper;
   }
 
-  _getRenderingContext(canvas, transform) {
+  _getRenderingContext(canvasContext, transform) {
     return {
-      canvas,
+      canvasContext,
       transform,
       viewport: this.viewport,
       annotationMode: this.#annotationMode,
@@ -933,8 +923,6 @@ class PDFPageView extends BasePDFPageView {
       annotationCanvasMap: this._annotationCanvasMap,
       pageColors: this.pageColors,
       isEditing: this.#isEditing,
-      recordOperations:
-        this.enableOptimizedPartialRendering && !this.recordedGroups,
     };
   }
 
@@ -984,7 +972,6 @@ class PDFPageView extends BasePDFPageView {
         annotationStorage,
         annotationEditorUIManager,
         downloadManager,
-        enableComment,
         enableScripting,
         fieldObjectsPromise,
         hasJSActionsPromise,
@@ -999,7 +986,6 @@ class PDFPageView extends BasePDFPageView {
         renderForms: this.#annotationMode === AnnotationMode.ENABLE_FORMS,
         linkService,
         downloadManager,
-        enableComment,
         enableScripting,
         hasJSActionsPromise,
         fieldObjectsPromise,
@@ -1015,7 +1001,7 @@ class PDFPageView extends BasePDFPageView {
     const { width, height } = viewport;
     this.#originalViewport = viewport;
 
-    const { canvas, prevCanvas } = this._createCanvas(newCanvas => {
+    const { canvas, prevCanvas, ctx } = this._createCanvas(newCanvas => {
       // Always inject the canvas as the first element in the wrapper.
       canvasWrapper.prepend(newCanvas);
     });
@@ -1057,7 +1043,7 @@ class PDFPageView extends BasePDFPageView {
       ? [outputScale.sx, 0, 0, outputScale.sy, 0, 0]
       : null;
     const resultPromise = this._drawCanvas(
-      this._getRenderingContext(canvas, transform),
+      this._getRenderingContext(ctx, transform),
       () => {
         prevCanvas?.remove();
         this._resetCanvas();

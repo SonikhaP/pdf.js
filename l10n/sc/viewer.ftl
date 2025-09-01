@@ -95,12 +95,24 @@ pdfjs-document-properties-button =
 pdfjs-document-properties-button-label = Propiedades de su documentu…
 pdfjs-document-properties-file-name = Nòmine de s'archìviu:
 pdfjs-document-properties-file-size = Mannària de s'archìviu:
+# Variables:
+#   $size_kb (Number) - the PDF file size in kilobytes
+#   $size_b (Number) - the PDF file size in bytes
+pdfjs-document-properties-kb = { $size_kb } KB ({ $size_b } bytes)
+# Variables:
+#   $size_mb (Number) - the PDF file size in megabytes
+#   $size_b (Number) - the PDF file size in bytes
+pdfjs-document-properties-mb = { $size_mb } MB ({ $size_b } bytes)
 pdfjs-document-properties-title = Tìtulu:
 pdfjs-document-properties-author = Autoria:
 pdfjs-document-properties-subject = Ogetu:
 pdfjs-document-properties-keywords = Faeddos crae:
 pdfjs-document-properties-creation-date = Data de creatzione:
 pdfjs-document-properties-modification-date = Data de modìfica:
+# Variables:
+#   $date (Date) - the creation/modification date of the PDF file
+#   $time (Time) - the creation/modification time of the PDF file
+pdfjs-document-properties-date-string = { $date }, { $time }
 pdfjs-document-properties-creator = Creatzione:
 pdfjs-document-properties-producer = Produtore de PDF:
 pdfjs-document-properties-version = Versione de PDF:
@@ -222,6 +234,13 @@ pdfjs-missing-file-error = Ammancat s'archìviu PDF.
 pdfjs-unexpected-response-error = Risposta imprevista de su serbidore.
 pdfjs-rendering-error = Faddina in sa visualizatzione de sa pàgina.
 
+## Annotations
+
+# Variables:
+#   $date (Date) - the modification date of the annotation
+#   $time (Time) - the modification time of the annotation
+pdfjs-annotation-date-string = { $date }, { $time }
+
 ## Password
 
 pdfjs-password-label = Inserta sa crae pro abèrrere custu archìviu PDF.
@@ -249,6 +268,9 @@ pdfjs-highlight-floating-button1 =
     .aria-label = Evidèntzia
 pdfjs-highlight-floating-button-label = Evidèntzia
 
+## Default editor aria labels
+
+
 ## Remove button for the various kind of editor.
 
 pdfjs-editor-remove-ink-button =
@@ -272,15 +294,27 @@ pdfjs-editor-stamp-add-image-button =
 pdfjs-editor-stamp-add-image-button-label = Agiunghe un’immàgine
 # This refers to the thickness of the line used for free highlighting (not bound to text)
 pdfjs-editor-free-highlight-thickness-input = Grussària
+pdfjs-free-text =
+    .aria-label = Editore de testu
+pdfjs-free-text-default-content = Cumintza a iscrìere…
+pdfjs-ink =
+    .aria-label = Editore de disinnos
+pdfjs-ink-canvas =
+    .aria-label = Immàgine creada dae s’utente
 
 ## Alt-text dialog
 
 pdfjs-editor-alt-text-button-label = Testu alternativu
+pdfjs-editor-alt-text-edit-button-label = Modifica su testu alternativu
 pdfjs-editor-alt-text-dialog-label = Sèbera un’optzione
 pdfjs-editor-alt-text-dialog-description = Su testu alternativu (“alt text”) est ùtile pro persones chi non podent bìdere s’immàgine o cando non benit carrigada.
 pdfjs-editor-alt-text-add-description-label = Agiunghe una descritzione
 pdfjs-editor-alt-text-cancel-button = Annulla
 pdfjs-editor-alt-text-save-button = Sarva
+
+## Editor resizers
+## This is used in an aria label to help to understand the role of the resizer.
+
 
 ## Color picker
 
@@ -296,6 +330,10 @@ pdfjs-editor-colorpicker-blue =
     .title = Biaitu
 pdfjs-editor-colorpicker-pink =
     .title = Rosa
+
+## Show all highlights
+## This is a toggle button to show/hide all the highlights.
+
 
 ## New alt-text dialog
 ## Group note for entire feature: Alternative text (alt text) helps when people can't see the image. This feature includes a tool to create alt text automatically using an AI model that works locally on the user's device to preserve privacy.
@@ -328,10 +366,29 @@ pdfjs-editor-alt-text-settings-show-dialog-button-label = Mustra deretu s’edit
 pdfjs-editor-alt-text-settings-show-dialog-description = T’agiudat a assegurare chi totu is immàgines tuas tèngiant unu testu alternativu.
 pdfjs-editor-alt-text-settings-close-button = Serra
 
+## "Annotations removed" bar
+
+
+## Add a signature dialog
+
+
+## Tab names
+
+
+## Tab panels
+
+
+## Controls
+
+
 ## Dialog buttons
 
-pdfjs-editor-add-signature-cancel-button = Annulla
 
-##  Edit a comment dialog
+## Main menu for adding/removing signatures
 
-pdfjs-editor-edit-comment-manager-cancel-button = Annulla
+
+## Editor toolbar
+
+
+## Edit signature description dialog
+

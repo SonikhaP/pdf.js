@@ -66,7 +66,6 @@ import { calculateMD5 } from "./calculate_md5.js";
 import { Catalog } from "./catalog.js";
 import { clearGlobalCaches } from "./cleanup_helper.js";
 import { DatasetReader } from "./dataset_reader.js";
-import { Intersector } from "./intersector.js";
 import { Linearization } from "./parser.js";
 import { NullStream } from "./stream.js";
 import { ObjectLoader } from "./object_loader.js";
@@ -80,8 +79,6 @@ import { XRef } from "./xref.js";
 const LETTER_SIZE_MEDIABOX = [0, 0, 612, 792];
 
 class Page {
-  #areAnnotationsCached = false;
-
   #resourcesPromise = null;
 
   constructor({
@@ -311,12 +308,6 @@ class Page {
             }
           }
           continue;
-        }
-        if (annotation.popup?.deleted) {
-          const popupRef = Ref.fromString(annotation.popupRef);
-          if (popupRef) {
-            deletedAnnotations.put(popupRef, popupRef);
-          }
         }
         existingAnnotations?.put(ref);
         annotation.ref = ref;
@@ -641,7 +632,6 @@ class Page {
     includeMarkedContent,
     disableNormalization,
     sink,
-    intersector = null,
   }) {
     const contentStreamPromise = this.getContentStream();
     const resourcesPromise = this.loadResources(RESOURCES_KEYS_TEXT_CONTENT);
@@ -668,7 +658,6 @@ class Page {
       sink,
       viewBox: this.view,
       lang,
-      intersector,
     });
   }
 
@@ -718,8 +707,6 @@ class Page {
       intentDisplay = !!(intent & RenderingIntentFlag.DISPLAY),
       intentPrint = !!(intent & RenderingIntentFlag.PRINT);
 
-    const highlightedAnnotations = [];
-
     for (const annotation of annotations) {
       // Get the annotation even if it's hidden because
       // JS can change its display.
@@ -745,27 +732,7 @@ class Page {
               );
             })
         );
-      } else if (annotation.overlaysTextContent && isVisible) {
-        highlightedAnnotations.push(annotation);
       }
-    }
-
-    if (highlightedAnnotations.length > 0) {
-      const intersector = new Intersector(highlightedAnnotations);
-      textContentPromises.push(
-        this.extractTextContent({
-          handler,
-          task,
-          includeMarkedContent: false,
-          disableNormalization: false,
-          sink: null,
-          viewBox: this.view,
-          lang: null,
-          intersector,
-        }).then(() => {
-          intersector.setText();
-        })
-      );
     }
 
     await Promise.all(textContentPromises);
@@ -804,7 +771,6 @@ class Page {
               this._localIdFactory,
               /* collectFields */ false,
               orphanFields,
-              /* collectByType */ null,
               this.ref
             ).catch(function (reason) {
               warn(`_parsedAnnotations: "${reason}".`);
@@ -841,8 +807,6 @@ class Page {
         return sortedAnnotations;
       });
 
-    this.#areAnnotationsCached = true;
-
     return shadow(this, "_parsedAnnotations", promise);
   }
 
@@ -853,63 +817,6 @@ class Page {
       PageActionEventType
     );
     return shadow(this, "jsActions", actions);
-  }
-
-  async collectAnnotationsByType(
-    handler,
-    task,
-    types,
-    promises,
-    annotationGlobals
-  ) {
-    const { pageIndex } = this;
-
-    if (this.#areAnnotationsCached) {
-      const cachedAnnotations = await this._parsedAnnotations;
-      for (const { data } of cachedAnnotations) {
-        if (!types || types.has(data.annotationType)) {
-          data.pageIndex = pageIndex;
-          promises.push(Promise.resolve(data));
-        }
-      }
-      return;
-    }
-
-    const annots = await this.pdfManager.ensure(this, "annotations");
-    for (const annotationRef of annots) {
-      promises.push(
-        AnnotationFactory.create(
-          this.xref,
-          annotationRef,
-          annotationGlobals,
-          this._localIdFactory,
-          /* collectFields */ false,
-          /* orphanFields */ null,
-          /* collectByType */ types,
-          this.ref
-        )
-          .then(async annotation => {
-            if (!annotation) {
-              return null;
-            }
-            annotation.data.pageIndex = pageIndex;
-            if (annotation.hasTextContent && annotation.viewable) {
-              const partialEvaluator = this.#createPartialEvaluator(handler);
-              await annotation.extractTextContent(partialEvaluator, task, [
-                -Infinity,
-                -Infinity,
-                Infinity,
-                Infinity,
-              ]);
-            }
-            return annotation.data;
-          })
-          .catch(function (reason) {
-            warn(`collectAnnotationsByType: "${reason}".`);
-            return null;
-          })
-      );
-    }
   }
 }
 
@@ -1165,49 +1072,6 @@ class PDFDocument {
         Array.isArray(rectangle) && rectangle.every(value => value === 0);
       return isSignature && isInvisible;
     });
-  }
-
-  #collectSignatureCertificates(
-    fields,
-    collectedSignatureCertificates,
-    visited = new RefSet()
-  ) {
-    if (!Array.isArray(fields)) {
-      return;
-    }
-    for (let field of fields) {
-      if (field instanceof Ref) {
-        if (visited.has(field)) {
-          continue;
-        }
-        visited.put(field);
-      }
-      field = this.xref.fetchIfRef(field);
-      if (!(field instanceof Dict)) {
-        continue;
-      }
-      if (field.has("Kids")) {
-        this.#collectSignatureCertificates(
-          field.get("Kids"),
-          collectedSignatureCertificates,
-          visited
-        );
-        continue;
-      }
-      const isSignature = isName(field.get("FT"), "Sig");
-      if (!isSignature) {
-        continue;
-      }
-      const value = field.get("V");
-      if (!(value instanceof Dict)) {
-        continue;
-      }
-      const subFilter = value.get("SubFilter");
-      if (!(subFilter instanceof Name)) {
-        continue;
-      }
-      collectedSignatureCertificates.add(subFilter.name);
-    }
   }
 
   get _xfaStreams() {
@@ -1525,20 +1389,6 @@ class PDFDocument {
       // specification).
       const sigFlags = acroForm.get("SigFlags");
       const hasSignatures = !!(sigFlags & 0x1);
-      if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("MOZCENTRAL")) {
-        if (hasSignatures) {
-          const collectedSignatureCertificates = new Set();
-          this.#collectSignatureCertificates(
-            fields,
-            collectedSignatureCertificates
-          );
-          if (collectedSignatureCertificates.size > 0) {
-            formInfo.collectedSignatureCertificates = Array.from(
-              collectedSignatureCertificates
-            );
-          }
-        }
-      }
       const hasOnlyDocumentSignatures =
         hasSignatures && this.#hasOnlyDocumentSignatures(fields);
       formInfo.hasAcroForm = hasFields && !hasOnlyDocumentSignatures;
@@ -1565,11 +1415,6 @@ class PDFDocument {
       IsCollectionPresent: !!catalog.collection,
       IsSignaturesPresent: formInfo.hasSignatures,
     };
-
-    if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("MOZCENTRAL")) {
-      docInfo.collectedSignatureCertificates =
-        formInfo.collectedSignatureCertificates ?? null;
-    }
 
     let infoDict;
     try {
@@ -1943,7 +1788,6 @@ class PDFDocument {
         /* idFactory = */ null,
         /* collectFields */ true,
         orphanFields,
-        /* collectByType */ null,
         /* pageRef */ null
       )
         .then(annotation => annotation?.getFieldObject())

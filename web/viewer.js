@@ -33,7 +33,6 @@ function getViewerConfiguration() {
     principalContainer: document.getElementById("mainContainer"),
     mainContainer: document.getElementById("viewerContainer"),
     viewerContainer: document.getElementById("viewer"),
-    viewerAlert: document.getElementById("viewer-alert"),
     toolbar: {
       container: document.getElementById("toolbarContainer"),
       numPages: document.getElementById("numPages"),
@@ -45,10 +44,6 @@ function getViewerConfiguration() {
       zoomIn: document.getElementById("zoomInButton"),
       zoomOut: document.getElementById("zoomOutButton"),
       print: document.getElementById("printButton"),
-      editorCommentButton: document.getElementById("editorCommentButton"),
-      editorCommentParamsToolbar: document.getElementById(
-        "editorCommentParamsToolbar"
-      ),
       editorFreeTextButton: document.getElementById("editorFreeTextButton"),
       editorFreeTextParamsToolbar: document.getElementById(
         "editorFreeTextParamsToolbar"
@@ -63,8 +58,14 @@ function getViewerConfiguration() {
       editorInkButton: document.getElementById("editorInkButton"),
       editorInkParamsToolbar: document.getElementById("editorInkParamsToolbar"),
       editorStampButton: document.getElementById("editorStampButton"),
+      editorStampButton_OK: document.getElementById("editorStampButton_OK"),
+      editorStampButton_CROSS: document.getElementById("editorStampButton_CROSS"),
+      editorStampButton_QUESTION: document.getElementById("editorStampButton_QUESTION"),
       editorStampParamsToolbar: document.getElementById(
         "editorStampParamsToolbar"
+      ),
+      editorStampParamsToolbar_OK: document.getElementById(
+        "editorStampParamsToolbar_OK"
       ),
       editorSignatureButton: document.getElementById("editorSignatureButton"),
       editorSignatureParamsToolbar: document.getElementById(
@@ -231,8 +232,6 @@ function getViewerConfiguration() {
       saveContainer: document.getElementById("addSignatureSaveContainer"),
       saveCheckbox: document.getElementById("addSignatureSaveCheckbox"),
       errorBar: document.getElementById("addSignatureError"),
-      errorTitle: document.getElementById("addSignatureErrorTitle"),
-      errorDescription: document.getElementById("addSignatureErrorDescription"),
       errorCloseButton: document.getElementById("addSignatureErrorCloseButton"),
       cancelButton: document.getElementById("addSignatureCancelButton"),
       addButton: document.getElementById("addSignatureAddButton"),
@@ -245,19 +244,6 @@ function getViewerConfiguration() {
       updateButton: document.getElementById("editSignatureUpdateButton"),
     },
     annotationEditorParams: {
-      editorCommentsSidebar: document.getElementById("editorCommentsSidebar"),
-      editorCommentsSidebarCount: document.getElementById(
-        "editorCommentsSidebarCount"
-      ),
-      editorCommentsSidebarTitle: document.getElementById(
-        "editorCommentsSidebarTitle"
-      ),
-      editorCommentsSidebarCloseButton: document.getElementById(
-        "editorCommentsSidebarCloseButton"
-      ),
-      editorCommentsSidebarList: document.getElementById(
-        "editorCommentsSidebarList"
-      ),
       editorFreeTextFontSize: document.getElementById("editorFreeTextFontSize"),
       editorFreeTextColor: document.getElementById("editorFreeTextColor"),
       editorInkColor: document.getElementById("editorInkColor"),
@@ -278,19 +264,6 @@ function getViewerConfiguration() {
       message: document.getElementById("editorUndoBarMessage"),
       undoButton: document.getElementById("editorUndoBarUndoButton"),
       closeButton: document.getElementById("editorUndoBarCloseButton"),
-    },
-    editCommentDialog: {
-      dialog: document.getElementById("commentManagerDialog"),
-      toolbar: document.getElementById("commentManagerToolbar"),
-      actions: document.getElementById("commentActionsButton"),
-      menu: document.getElementById("commentActionsMenu"),
-      editMenuItem: document.getElementById("commentActionsEditButton"),
-      deleteMenuItem: document.getElementById("commentActionsDeleteButton"),
-      closeButton: document.getElementById("commentCloseButton"),
-      textInput: document.getElementById("commentManagerTextInput"),
-      textView: document.getElementById("commentManagerTextView"),
-      cancelButton: document.getElementById("commentManagerCancelButton"),
-      saveButton: document.getElementById("commentManagerSaveButton"),
     },
   };
 }
