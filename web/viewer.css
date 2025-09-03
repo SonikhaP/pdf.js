@@ -1631,7 +1631,10 @@ dialog :link {
             display: none;
         }
     }
-.custom-highlight {
+.gdPictureHighlighter {
+  position: absolute;
+  background-color: rgba(255, 255, 0, 0.5);
   border-radius: 2px;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+  pointer-events: auto;
 }
+

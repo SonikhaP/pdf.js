@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+
 import {
   AnnotationActionEventType,
   AnnotationBorderStyleType,
@@ -72,6 +73,9 @@ import { JpegStream } from "./jpeg_stream.js";
 import { ObjectLoader } from "./object_loader.js";
 import { OperatorList } from "./operator_list.js";
 import { XFAFactory } from "./xfa/factory.js";
+/*import { createGdPictureAnnotationClass } from "./gd_annotation.js";*/
+/*import { GdPictureHighlightAnnotation } from "./gdpicture_highlight_annotation.js";*/
+
 
 class AnnotationFactory {
   static createGlobals(pdfManager) {
@@ -163,7 +167,9 @@ class AnnotationFactory {
     pageIndex = null,
     pageRef = null
   ) {
+    
     const dict = xref.fetchIfRef(ref);
+   
     if (!(dict instanceof Dict)) {
       return undefined;
     }
@@ -172,16 +178,27 @@ class AnnotationFactory {
     const id =
       ref instanceof Ref ? ref.toString() : `annot_${idFactory.createObjId()}`;
 
-    // Determine the annotation's subtype.
     let subtype = dict.get("Subtype");
-    subtype = subtype instanceof Name ? subtype.name : null;
+   
+    let subtypeName = null;
+
+    if (subtype instanceof Name) {
+      subtypeName = subtype.name;
+    } else if (typeof subtype === "object" && subtype?.name) {
+      subtypeName = subtype.name;
+    } else if (typeof subtype === "string") {
+      subtypeName = subtype;
+    } else {
+      subtypeName = subtype?.toString();
+    }
+  
 
     // Return the right annotation object based on the subtype and field type.
     const parameters = {
       xref,
       ref,
       dict,
-      subtype,
+      subtypeName,
       id,
       annotationGlobals,
       collectFields,
@@ -192,8 +209,27 @@ class AnnotationFactory {
       evaluatorOptions: pdfManager.evaluatorOptions,
       pageRef,
     };
+    //if (subtypeName?.includes("GdPicture")) {
+    //  return new GDPictureHighlightAnnotation(parameters);
+    //}
 
-    switch (subtype) {
+    //if (subtypeName.startsWith("GdPicture-")) {
+    //  // ✅ Custom fallback for GdPicture annotations
+    //  return {
+    //    annotationType: 1001,
+    //    subtype,
+    //    rect: dict.map.getArray("Rect"),
+    //    color: dict.map.getPdfColorArray("C") || [1, 1, 0],
+    //    contents: dict.get("Contents"),
+    //    hasAppearance: false,
+    //    isRenderable: true,
+    //    id: ref.toString(),
+    //  };
+    //}
+
+    console.log("📦 Preparing parameters:", parameters);
+
+    switch (subtypeName) {
       case "Link":
         return new LinkAnnotation(parameters);
 
@@ -249,6 +285,9 @@ class AnnotationFactory {
 
       case "Highlight":
         return new HighlightAnnotation(parameters);
+
+      case "GdPicture-AnnotationTypeRectangleHighlighter":
+        return new GDPictureHighlightAnnotation(parameters);
 
       case "Underline":
         return new UnderlineAnnotation(parameters);
@@ -356,6 +395,7 @@ class AnnotationFactory {
       if (annotation.deleted) {
         continue;
       }
+
       switch (annotation.annotationType) {
         case AnnotationEditorType.FREETEXT:
           if (!baseFontRef) {
@@ -381,6 +421,28 @@ class AnnotationFactory {
           if (annotation.quadPoints) {
             promises.push(
               HighlightAnnotation.createNewAnnotation(xref, annotation, changes)
+            );
+          } else {
+            promises.push(
+              InkAnnotation.createNewAnnotation(xref, annotation, changes)
+            );
+          }
+          break;
+        case AnnotationEditorType.GDPICTURE_HIGHLIGHT:
+          if (!annotation.quadPoints && annotation.rect) {
+            const [x1, y1, x2, y2] = annotation.rect;
+
+            annotation.quadPoints = [
+              x1, y2, // bottom-left
+              x2, y2, // bottom-right
+              x2, y1, // top-right
+              x1, y1, // top-left
+            ];
+          }
+
+          if (annotation.quadPoints) {
+            promises.push(
+              GDPictureHighlightAnnotation.createNewAnnotation(xref, annotation, changes)
             );
           } else {
             promises.push(
@@ -467,6 +529,41 @@ class AnnotationFactory {
           if (annotation.quadPoints) {
             promises.push(
               HighlightAnnotation.createNewPrintAnnotation(
+                annotationGlobals,
+                xref,
+                annotation,
+                {
+                  evaluatorOptions: options,
+                }
+              )
+            );
+          } else {
+            promises.push(
+              InkAnnotation.createNewPrintAnnotation(
+                annotationGlobals,
+                xref,
+                annotation,
+                {
+                  evaluatorOptions: options,
+                }
+              )
+            );
+          }
+          break;
+        case AnnotationEditorType.GDPICTURE_HIGHLIGHT:
+          if (!annotation.quadPoints && annotation.rect) {
+            const [x1, y1, x2, y2] = annotation.rect;
+
+            annotation.quadPoints = [
+              x1, y2, // bottom-left
+              x2, y2, // bottom-right
+              x2, y1, // top-right
+              x1, y1, // top-left
+            ];
+          }
+          if (annotation.quadPoints) {
+            promises.push(
+              GDPictureHighlightAnnotation.createNewPrintAnnotation(
                 annotationGlobals,
                 xref,
                 annotation,
@@ -4779,6 +4876,159 @@ class HighlightAnnotation extends MarkupAnnotation {
   }
 }
 
+class GDPictureHighlightAnnotation extends MarkupAnnotation {
+  constructor(params) {
+    super(params);
+
+    const { dict, xref } = params;
+    this.data.annotationType = AnnotationType.GDPICTURE_HIGHLIGHT;
+    this.data.isEditable = !this.data.noHTML;
+    // We want to be able to add mouse listeners to the annotation.
+    this.data.noHTML = false;
+    this.data.opacity = dict.get("CA") || 1;
+
+    const rawQuadPoints = dict.getArray("QuadPoints");
+
+    const quadPoints = rawQuadPoints && rawQuadPoints.length
+      ? Float32Array.from(rawQuadPoints)
+      : null;
+
+    this.data.quadPoints = quadPoints;
+    if (!this.data.quadPoints && this.data.rect) {
+      const [x1, y1, x2, y2] = this.data.rect;
+      this.data.quadPoints = Float32Array.from([
+        x1, y2, // top-left
+        x2, y2, // top-right
+        x1, y1, // bottom-right
+        x2, y1  // bottom-left
+      ]);
+    }
+
+    if (quadPoints) {
+      const resources = this.appearance?.dict.get("Resources");
+
+      if (!this.appearance || !resources?.has("ExtGState")) {
+        if (this.appearance) {
+          // Workaround for cases where there's no /ExtGState-entry directly
+          // available, e.g. when the appearance stream contains a /XObject of
+          // the /Form-type, since that causes the highlighting to completely
+          // obscure the PDF content below it (fixes issue13242.pdf).
+          warn("GDPictureHighlightAnnotation - ignoring built-in appearance stream.");
+        }
+        // Default color is yellow in Acrobat Reader
+        const fillColor = this.color ? getPdfColorArray(this.color) : [1, 1, 0];
+        const fillAlpha = dict.get("CA");
+
+        this._setDefaultAppearance({
+          xref,
+          fillColor,
+          blendMode: "Multiply",
+          fillAlpha,
+          pointsCallback: (buffer, points) => {
+            buffer.push(
+              `${points[0]} ${points[1]} m`,
+              `${points[2]} ${points[3]} l`,
+              `${points[6]} ${points[7]} l`,
+              `${points[4]} ${points[5]} l`,
+              "f"
+            );
+            return [points[0], points[7], points[2], points[3]];
+          },
+        });
+      }
+    } else {
+      this.data.popupRef = null;
+    }
+  }
+
+  static createNewDict(annotation, xref, { apRef, ap }) {
+    const { color, oldAnnotation, opacity, rect, rotation, user, quadPoints } =
+      annotation;
+    const highlight = oldAnnotation || new Dict(xref);
+    highlight.set("Type", Name.get("Annot"));
+    highlight.set("Subtype", Name.get("GdPicture-AnnotationTypeRectangleHighlighter"));
+    highlight.set(
+      oldAnnotation ? "M" : "CreationDate",
+      `D:${getModificationDate()}`
+    );
+    highlight.set("CreationDate", `D:${getModificationDate()}`);
+    highlight.set("Rect", rect);
+    highlight.set("F", 4);
+    highlight.set("Border", [0, 0, 0]);
+    highlight.set("Rotate", rotation);
+    highlight.set("QuadPoints", quadPoints);
+
+    // Color.
+    highlight.set("C", getPdfColorArray(color));
+
+    // Opacity.
+    highlight.set("CA", opacity);
+
+    if (user) {
+      highlight.set("T", stringToAsciiOrUTF16BE(user));
+    }
+
+    if (apRef || ap) {
+      const n = new Dict(xref);
+      highlight.set("AP", n);
+      n.set("N", apRef || ap);
+    }
+
+    return highlight;
+  }
+
+  static async createNewAppearanceStream(annotation, xref, params) {
+    const { color, rect, outlines, opacity } = annotation;
+
+    const appearanceBuffer = [
+      `${getPdfColor(color, /* isFill */ true)}`,
+      "/R0 gs",
+    ];
+
+    const buffer = [];
+    for (const outline of outlines) {
+      buffer.length = 0;
+      buffer.push(
+        `${numberToString(outline[0])} ${numberToString(outline[1])} m`
+      );
+      for (let i = 2, ii = outline.length; i < ii; i += 2) {
+        buffer.push(
+          `${numberToString(outline[i])} ${numberToString(outline[i + 1])} l`
+        );
+      }
+      buffer.push("h");
+      appearanceBuffer.push(buffer.join("\n"));
+    }
+    appearanceBuffer.push("f*");
+    const appearance = appearanceBuffer.join("\n");
+
+    const appearanceStreamDict = new Dict(xref);
+    appearanceStreamDict.set("FormType", 1);
+    appearanceStreamDict.set("Subtype", Name.get("Form"));
+    appearanceStreamDict.set("Type", Name.get("XObject"));
+    appearanceStreamDict.set("BBox", rect);
+    appearanceStreamDict.set("Length", appearance.length);
+
+    const resources = new Dict(xref);
+    const extGState = new Dict(xref);
+    resources.set("ExtGState", extGState);
+    appearanceStreamDict.set("Resources", resources);
+    const r0 = new Dict(xref);
+    extGState.set("R0", r0);
+    r0.set("BM", Name.get("Multiply"));
+
+    if (opacity !== 1) {
+      r0.set("ca", opacity);
+      r0.set("Type", Name.get("ExtGState"));
+    }
+
+    const ap = new StringStream(appearance);
+    ap.dict = appearanceStreamDict;
+
+    return ap;
+  }
+}
+
 class UnderlineAnnotation extends MarkupAnnotation {
   constructor(params) {
     super(params);
@@ -5154,5 +5404,5 @@ export {
   getQuadPoints,
   MarkupAnnotation,
   PopupAnnotation,
-  WidgetAnnotation,
+  WidgetAnnotation
 };

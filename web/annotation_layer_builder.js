@@ -143,34 +143,12 @@ class AnnotationLayerBuilder {
     if (this._cancelled) {
       return;
     }
+    console.log("📦 Annotations received:", annotations);
 
     // Create an annotation layer div and render the annotations
     // if there is at least one annotation.
     const div = (this.div = document.createElement("div"));
-    //Added for Rectangle Annotation
-    const customAnnotations = annotations.filter(annot =>
-      annot.subtype === "Square" && annot.title?.startsWith("Markierung")
-    );
-
-    for (const annot of customAnnotations) {
-      const rect = Util.normalizeRect(annot.rect);
-      const [x1, y1, x2, y2] = viewport.convertToViewportRectangle(rect);
-      const width = x2 - x1;
-      const height = y2 - y1;
-
-      const highlightDiv = document.createElement("div");
-      highlightDiv.className = "custom-highlight";
-      highlightDiv.style.left = `${Math.min(x1, x2)}px`;
-      highlightDiv.style.top = `${Math.min(y1, y2)}px`;
-      highlightDiv.style.width = `${Math.abs(width)}px`;
-      highlightDiv.style.height = `${Math.abs(height)}px`;
-      highlightDiv.style.backgroundColor = "rgba(255, 255, 0, 0.3)";
-      highlightDiv.style.position = "absolute";
-      highlightDiv.style.pointerEvents = "none";
-
-      div.appendChild(highlightDiv);
-    }
-
+  
     div.className = "annotationLayer";
     this.#onAppend?.(div);
 
@@ -180,6 +158,8 @@ class AnnotationLayerBuilder {
       this.hide(/* internal = */ true);
       return;
     }
+
+
 
     this.#initAnnotationLayer(viewport, structTreeLayer);
 

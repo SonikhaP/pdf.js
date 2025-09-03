@@ -507,6 +507,7 @@ const PDFViewerApplication = {
       annotationMode: AppOptions.get("annotationMode"),
       annotationEditorMode,
       annotationEditorHighlightColors: AppOptions.get("highlightEditorColors"),
+      enableEditor:true,
       enableHighlightFloatingButton: AppOptions.get(
         "enableHighlightFloatingButton"
       ),

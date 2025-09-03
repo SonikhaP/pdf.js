@@ -17,6 +17,8 @@ import { RenderingStates, ScrollMode, SpreadMode } from "./ui_utils.js";
 import { AppOptions } from "./app_options.js";
 import { LinkTarget } from "./pdf_link_service.js";
 import { PDFViewerApplication } from "./app.js";
+import { AnnotationEditorType } from "../../shared/util.js";
+
 
 const AppConstants =
   typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")
@@ -54,6 +56,18 @@ function webViewerLoad() {
   const config = getViewerConfiguration();
 
   PDFViewerApplication.run(config);
+ 
+  PDFViewerApplication.initializedPromise.then(() => {
+    const uiManager = PDFViewerApplication?.pdfViewer?.annotationEditorUIManager;
+    if (uiManager) {
+      uiManager.setMode(AnnotationEditorType.GDPICTURE_HIGHLIGHT);
+      console.log("🟢 Editor mode set to:", AnnotationEditorType.GDPICTURE_HIGHLIGHT);
+    } else {
+      console.warn("⚠️ UI Manager not available.");
+    }
+  });
+
+
 }
 
 // Block the "load" event until all pages are loaded, to ensure that printing

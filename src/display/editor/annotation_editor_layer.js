@@ -33,7 +33,7 @@ import { InkEditor } from "./ink.js";
 import { setLayerDimensions } from "../display_utils.js";
 import { SignatureEditor } from "./signature.js";
 import { StampEditor } from "./stamp.js";
-
+import { GdPictureHighlightEditor } from "./gdpicture_highlight_editor.js";
 
 /**
  * @typedef {Object} AnnotationEditorLayerOptions
@@ -96,6 +96,7 @@ class AnnotationEditorLayer {
       InkEditor,
       StampEditor,
       HighlightEditor,
+      GdPictureHighlightEditor,
       SignatureEditor,
     ].map(type => [type._editorType, type])
   );
@@ -115,14 +116,21 @@ class AnnotationEditorLayer {
     viewport,
     l10n,
   }) {
-    const editorTypes = [...AnnotationEditorLayer.#editorTypes.values()];
+   
     if (!AnnotationEditorLayer._initialized) {
       AnnotationEditorLayer._initialized = true;
+
+      // ✅ Register your custom editor first
+      AnnotationEditorLayer.#editorTypes.set(AnnotationEditorType.HIGHLIGHT, HighlightEditor);
+      AnnotationEditorLayer.#editorTypes.set(AnnotationEditorType.GDPICTURE_HIGHLIGHT, GdPictureHighlightEditor);
+
+      // ✅ Then collect and initialize all editors
+      const editorTypes = [...AnnotationEditorLayer.#editorTypes.values()];
       for (const editorType of editorTypes) {
         editorType.initialize(l10n, uiManager);
       }
+      uiManager.registerEditorTypes(editorTypes);
     }
-    uiManager.registerEditorTypes(editorTypes);
 
     this.#uiManager = uiManager;
     this.pageIndex = pageIndex;
@@ -143,7 +151,7 @@ class AnnotationEditorLayer {
 
   get isInvisible() {
     return (
-      this.isEmpty && this.#uiManager.getMode() === AnnotationEditorType.NONE
+      this.isEmpty && this.#uiManager.getMdeode() === AnnotationEditorType.NONE
     );
   }
 
@@ -159,7 +167,15 @@ class AnnotationEditorLayer {
    * The mode has changed: it must be updated.
    * @param {number} mode
    */
-  updateMode(mode = this.#uiManager.getMode()) {
+  updateMode() {
+    const mode = this.#uiManager?.getMode?.();
+    console.log("🎯 updateMode called — mode:", mode);
+
+    if (mode === AnnotationEditorType.NONE || mode === AnnotationEditorType.DISABLE) {
+      this.div.classList.add("disabled");
+    } else {
+      this.div.classList.remove("disabled");
+    }
     this.#cleanup();
     switch (mode) {
       case AnnotationEditorType.NONE:
@@ -174,6 +190,11 @@ class AnnotationEditorLayer {
         this.enableClick();
         break;
       case AnnotationEditorType.HIGHLIGHT:
+        this.enableTextSelection();
+        this.togglePointerEvents(false);
+        this.disableClick();
+        break;
+      case AnnotationEditorType.GDPICTURE_HIGHLIGHT:
         this.enableTextSelection();
         this.togglePointerEvents(false);
         this.disableClick();
@@ -404,6 +425,8 @@ class AnnotationEditorLayer {
         true,
         /* updateButton = */ true
       );
+      this.#uiManager.showAllEditors(AnnotationEditorType.GDPICTURE_HIGHLIGHT, true, true);
+
       this.#textLayer.div.classList.add("free");
       this.toggleDrawing();
       HighlightEditor.startHighlighting(
@@ -584,7 +607,7 @@ class AnnotationEditorLayer {
     const id = editor.id;
 
     if (!id || this.#editors.has(id)) {
-      console.warn("⚠️ Editor ID missing or already present:", id);
+      //console.warn("⚠️ Editor ID missing or already present:", id);
       return;
     }
 
@@ -672,6 +695,7 @@ class AnnotationEditorLayer {
         ?.deserialize(data, this, this.#uiManager)) || null
     );
   }
+
 
   /**
    * Create and add a new editor.
@@ -802,7 +826,8 @@ class AnnotationEditorLayer {
    * @param {PointerEvent} event
    */
   pointerdown(event) {
-    if (this.#uiManager.getMode() === AnnotationEditorType.HIGHLIGHT) {
+    if (this.#uiManager.getMode() === AnnotationEditorType.HIGHLIGHT ||
+      this.#uiManager.getMode() === AnnotationEditorType.GDPICTURE_HIGHLIGHT) {
       this.enableTextSelection();
     }
     if (this.#hadPointerDown) {

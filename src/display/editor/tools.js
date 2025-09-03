@@ -2428,6 +2428,19 @@ class AnnotationEditorUIManager {
   getMode() {
     return this.#mode;
   }
+  setMode(mode) {
+    this.currentMode = mode;
+
+    // Notify all registered layers to update their mode
+    for (const layer of this._layers) {
+      layer.updateMode?.(); // Safely call if method exists
+    }
+
+    // Optionally dispatch an event if needed
+    this._eventBus?.dispatch("annotationeditormodechanged", { mode });
+
+    console.log("🧠 Editor mode set to:", mode);
+  }
 
   get imageManager() {
     return shadow(this, "imageManager", new ImageManager());

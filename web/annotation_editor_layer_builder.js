@@ -86,7 +86,11 @@ class AnnotationEditorLayerBuilder {
    * @param {AnnotationEditorLayerBuilderRenderOptions} options
    * @returns {Promise<void>}
    */
-  async render({ viewport, intent = "display" }) {
+  async render({ viewport, intent = "display", annotations = [] }) {
+    if (!viewport) {
+      console.trace("🚨 render() called without viewport");
+      return;
+    }
     if (intent !== "display") {
       return;
     }
@@ -95,7 +99,11 @@ class AnnotationEditorLayerBuilder {
       return;
     }
 
-    const clonedViewport = viewport.clone({ dontFlip: true });
+  
+    const clonedViewport = (viewport ?? this.pdfPage.getViewport({ scale: 1 })).clone({
+      dontFlip: true,
+    });
+
     if (this.div) {
       this.annotationEditorLayer.update({ viewport: clonedViewport });
       this.show();
@@ -125,7 +133,7 @@ class AnnotationEditorLayerBuilder {
     const parameters = {
       viewport: clonedViewport,
       div,
-      annotations: null,
+      annotations: this.annotations,
       intent,
     };
 
@@ -151,7 +159,7 @@ class AnnotationEditorLayerBuilder {
   }
 
   show() {
-    if (!this.div || this.annotationEditorLayer.isInvisible) {
+    if (!this.div || this.isInvisible) {
       return;
     }
     this.div.hidden = false;

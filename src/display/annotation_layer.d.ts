@@ -136,6 +136,11 @@ export class HighlightAnnotationElement extends AnnotationElement {
     annotationEditorType: number;
     render(): HTMLElement | undefined;
 }
+export class GDPictureHighlightAnnotationElement extends AnnotationElement {
+    constructor(parameters: any);
+    annotationEditorType: number;
+    render(): HTMLElement | undefined;
+}
 export class InkAnnotationElement extends AnnotationElement {
     constructor(parameters: any);
     containerClassName: string;

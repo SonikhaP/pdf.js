@@ -4973,6 +4973,91 @@ describe("annotation", function () {
     });
   });
 
+  describe("GDPictureHighlightAnnotation", function () {
+  
+    it("should parse a GdPicture highlight annotation", async function () {
+      const dict = new Dict();
+      dict.set("Type", Name.get("Annot"));
+      dict.set("Subtype", Name.get("GdPicture-AnnotationTypeRectangleHighlighter"));
+      dict.set("Rect", [10, 10, 20, 20]);
+
+      const ref = Ref.get(122, 0);
+      const xref = new XRefMock([{ ref, data: dict }]);
+
+      const { data } = await AnnotationFactory.create(
+        xref,
+        ref,
+        annotationGlobalsMock,
+        idFactoryMock
+      );
+
+      expect(data.annotationType).toEqual(AnnotationEditorType.GDPICTURE_HIGHLIGHT);
+      expect(data.rect).toEqual([10, 10, 20, 20]);
+    });
+
+    it("should create a new GdPicture highlight annotation", async function () {
+      const xref = new XRefMock();
+      const changes = new RefSetCache();
+      const task = new WorkerTask("test GdPicture creation");
+
+      await AnnotationFactory.saveNewAnnotations(
+        partialEvaluator,
+        task,
+        [
+          {
+            annotationType: AnnotationEditorType.GDPICTURE_HIGHLIGHT,
+            rect: [12, 34, 56, 78],
+            rotation: 0,
+            opacity: 1,
+            color: [1, 1, 0],
+            quadPoints: [12, 78, 56, 78, 56, 34, 12, 34],
+            outlines: [[12, 78, 56, 78]],
+          },
+        ],
+        null,
+        changes
+      );
+
+      const data = await writeChanges(changes, xref);
+      const base = data[0].data.replace(/\(D:\d+\)/, "(date)");
+
+      expect(base).toContain("/Subtype /Highlight"); // or your custom subtype
+      expect(base).toContain("/QuadPoints [12 78 56 78 56 34 12 34]");
+    });
+    it("should render GdPicture highlight for printing", async function () {
+      const task = new WorkerTask("test GdPicture printing");
+
+      const annotation = (
+        await AnnotationFactory.printNewAnnotations(
+          annotationGlobalsMock,
+          partialEvaluator,
+          task,
+          [
+            {
+              annotationType: AnnotationEditorType.GDPICTURE_HIGHLIGHT,
+              rect: [12, 34, 56, 78],
+              rotation: 0,
+              opacity: 0.5,
+              color: [255, 255, 0],
+              quadPoints: [12, 78, 56, 78, 56, 34, 12, 34],
+              outlines: [[12, 78, 56, 78]],
+            },
+          ]
+        )
+      )[0];
+
+      const { opList } = await annotation.getOperatorList(
+        partialEvaluator,
+        task,
+        RenderingIntentFlag.PRINT,
+        null
+      );
+
+      expect(opList.fnArray).toContain(OPS.constructPath);
+    });
+
+  });
+
   describe("UnderlineAnnotation", function () {
     it("should set quadpoints to null if not defined", async function () {
       const underlineDict = new Dict();

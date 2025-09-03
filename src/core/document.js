@@ -695,6 +695,8 @@ class Page {
 
   async getAnnotationsData(handler, task, intent) {
     const annotations = await this._parsedAnnotations;
+ 
+
     if (annotations.length === 0) {
       return annotations;
     }

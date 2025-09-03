@@ -400,6 +400,9 @@ class Toolbar {
         case AnnotationEditorType.HIGHLIGHT:
           editorHighlightButton.click();
           break;
+        case AnnotationEditorType.GDPICTURE_HIGHLIGHT:
+          editorHighlightButton.click();
+          break;
       }
     });
     eventBus._on("toolbardensity", this.#updateToolbarDensity.bind(this));

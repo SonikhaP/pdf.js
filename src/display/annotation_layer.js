@@ -128,6 +128,9 @@ class AnnotationElementFactory {
       case AnnotationType.HIGHLIGHT:
         return new HighlightAnnotationElement(parameters);
 
+      case AnnotationType.GDPICTURE_HIGHLIGHT:        
+        return new GDPictureHighlightAnnotationElement(parameters);
+
       case AnnotationType.UNDERLINE:
         return new UnderlineAnnotationElement(parameters);
 
@@ -565,15 +568,30 @@ class AnnotationElement {
     defs.append(clipPath);
 
     for (let i = 2, ii = quadPoints.length; i < ii; i += 8) {
-      const trX = quadPoints[i];
-      const trY = quadPoints[i + 1];
-      const blX = quadPoints[i + 2];
-      const blY = quadPoints[i + 3];
+      const trX = Math.max(quadPoints[i], quadPoints[i + 2]);
+      const blX = Math.min(quadPoints[i], quadPoints[i + 2]);
+      const trY = Math.max(quadPoints[i + 1], quadPoints[i + 3]);
+      const blY = Math.min(quadPoints[i + 1], quadPoints[i + 3]);
       const rect = svgFactory.createElement("rect");
       const x = (blX - rectBlX) / width;
       const y = (rectTrY - trY) / height;
       const rectWidth = (trX - blX) / width;
       const rectHeight = (trY - blY) / height;
+      console.log("🔍 Quad candidate:", {
+        trX, trY, blX, blY,
+        width: trX - blX,
+        height: trY - blY
+      });
+
+      const minSize = 0.5; // or whatever threshold makes sense
+
+      if ((trX - blX) < minSize || (trY - blY) < minSize) {
+        console.warn("⚠️ Quad too thin — skipping:", { trX, trY, blX, blY });
+        continue;
+      }
+
+
+
       rect.setAttribute("x", x);
       rect.setAttribute("y", y);
       rect.setAttribute("width", rectWidth);
@@ -3010,6 +3028,65 @@ class HighlightAnnotationElement extends AnnotationElement {
   }
 }
 
+class GDPictureHighlightAnnotationElement extends AnnotationElement {
+  constructor(parameters) {
+    super(parameters, {
+      isRenderable: true,
+      ignoreBorder: true,
+      createQuadrilaterals: true,
+    });
+    this.annotationEditorType = AnnotationEditorType.GDPICTURE_HIGHLIGHT;
+  }
+  render() {
+    if (!this.data.popupRef && this.hasPopupData) {
+      this._createPopup();
+    }
+
+    this.container.classList.add("highlightAnnotation");
+    this._editOnDoubleClick();
+
+    return this.container;
+  }
+  //render() {
+  //  const container = document.createElement("section");
+  //  container.className = "gdPictureHighlighter";
+  //  container.setAttribute("data-annotation-id", this.data.id);
+  //  container.style.left = `${this.data.rect[0]}px`;
+  //  container.style.top = `${this.data.rect[1]}px`;
+  //  container.style.width = `${this.data.rect[2] - this.data.rect[0]}px`;
+  //  container.style.height = `${this.data.rect[3] - this.data.rect[1]}px`;
+  //  container.style.backgroundColor = `rgba(${this.data.color[0] * 255}, ${this.data.color[1] * 255}, ${this.data.color[2] * 255}, 0.5)`;
+  //  return container;
+  //}
+}
+
+//class GdPictureRectangleHighlighterAnnotationElement extends AnnotationElement {
+//  constructor(parameters) {
+//    super(parameters, {
+//      isRenderable: true,
+//      ignoreBorder: true,
+//    });
+//    this.annotationEditorType = AnnotationEditorType.HIGHLIGHT;
+
+//  }
+
+//  render() {
+//    if (!this.data.popupRef && this.hasPopupData) {
+//      this._createPopup();
+//    }
+
+//    this.container.classList.add("gdPictureHighlighter");
+
+//    // Apply custom styles
+//    this.container.style.backgroundColor = "rgba(255, 255, 0, 0.5)";
+//    this.container.style.borderRadius = "2px";
+
+//    this._editOnDoubleClick();
+
+//    return this.container;
+//  }
+//}
+
 class UnderlineAnnotationElement extends AnnotationElement {
   constructor(parameters) {
     super(parameters, {
@@ -3302,6 +3379,7 @@ class AnnotationLayer {
       }
       elementParams.data = data;
       const element = AnnotationElementFactory.create(elementParams);
+      console.log("🔍 Full parameters:", elementParams);
 
       if (!element.isRenderable) {
         continue;
@@ -3452,6 +3530,7 @@ export {
   AnnotationLayer,
   FreeTextAnnotationElement,
   HighlightAnnotationElement,
+  GDPictureHighlightAnnotationElement,
   InkAnnotationElement,
   StampAnnotationElement,
 };

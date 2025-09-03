@@ -349,6 +349,8 @@ class PDFPageView extends BasePDFPageView {
     });
     this.#setDimensions();
     this.reset();
+    // Inside setPdfPage
+    console.log("📐 Viewport set:", this.viewport);
   }
 
   destroy() {
@@ -398,12 +400,17 @@ class PDFPageView extends BasePDFPageView {
   }
 
   async #renderAnnotationEditorLayer() {
+    // Inside #renderAnnotationEditorLayer
+    console.log("🧭 Using viewport from this.viewport:", this.viewport);
+
     let error = null;
     try {
       await this.annotationEditorLayer.render({
         viewport: this.viewport,
         intent: "display",
+        annotations: this.annotations,
       });
+      this.annotationEditorLayer.show(); // ✅ Makes the layer visible
     } catch (ex) {
       console.error("#renderAnnotationEditorLayer:", ex);
       error = ex;
@@ -1099,7 +1106,14 @@ class PDFPageView extends BasePDFPageView {
           this.#addLayer(annotationEditorLayerDiv, "annotationEditorLayer");
         },
       });
-      this.#renderAnnotationEditorLayer();
+      this.annotationEditorLayer.render({
+        viewport: this.viewport, // ✅ must be defined
+        intent: "display",
+        annotations: this.annotations, // optional but helpful
+      });
+      this.annotationEditorLayer.show(); // ✅ Makes the layer visible
+      await this.#renderAnnotationEditorLayer();
+     
     });
 
     if (pdfPage.isPureXfa) {
