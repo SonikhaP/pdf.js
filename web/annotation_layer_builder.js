@@ -143,8 +143,7 @@ class AnnotationLayerBuilder {
     if (this._cancelled) {
       return;
     }
-    console.log("📦 Annotations received:", annotations);
-
+   
     // Create an annotation layer div and render the annotations
     // if there is at least one annotation.
     const div = (this.div = document.createElement("div"));

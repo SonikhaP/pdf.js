@@ -75,7 +75,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
 
   static _defaultColor = null;
 
-  static _defaultOpacity = 1;
+  static _defaultOpacity = 0.8;
 
   static _defaultThickness = 12;
 
@@ -104,8 +104,13 @@ class GdPictureHighlightEditor extends AnnotationEditor {
   }
 
   constructor(params) {
-    super({ ...params, name: "GdPictureHighlightEditor" });
-    this.color = params.color || GdPictureHighlightEditor._defaultColor;
+    super({ ...params, name: "highlightEditor" });
+    this.color = typeof params.color === "string"
+      ? params.color
+      : Array.isArray(params.color)
+        ? Util.makeHexColor(...params.color)
+        : GdPictureHighlightEditor._defaultColor;
+
     this.#thickness = params.thickness || GdPictureHighlightEditor._defaultThickness;
     this.#opacity = params.opacity || GdPictureHighlightEditor._defaultOpacity;
     this.#boxes = params.boxes || null;
@@ -860,9 +865,31 @@ class GdPictureHighlightEditor extends AnnotationEditor {
     this._freeHighlightClipId = "";
   }
 
+
   /** @inheritdoc */
   static async deserialize(data, parent, uiManager) {
     let initialData = null;
+
+    // Helper to normalize color input
+    const normalizeColor = (color) => {
+      if (Array.isArray(color) && color.length === 3) {
+        return color;
+      }
+      if (color && typeof color === "object" && "r" in color && "g" in color && "b" in color) {
+        return [color.r, color.g, color.b];
+      }
+      if (typeof color === "string" && color.startsWith("#")) {
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+        return [r, g, b];
+      }
+      if (typeof color === "number") {
+        return [color, color, color]; // grayscale fallback
+      }
+      return [255, 255, 0]; // default to yellow
+    };
+
     if (data instanceof GDPictureHighlightAnnotationElement) {
       const {
         data: { quadPoints, rect, rotation, id, color, opacity, popupRef },
@@ -870,10 +897,14 @@ class GdPictureHighlightEditor extends AnnotationEditor {
           page: { pageNumber },
         },
       } = data;
+
+    
+      const normalizedColor = normalizeColor(color);
+     
       initialData = data = {
         annotationType: AnnotationEditorType.GDPICTURE_HIGHLIGHT,
-        color: Array.isArray(color) ? color : Array.from(color || []),
-        opacity,
+        color: normalizedColor,
+        opacity: typeof opacity === "number" ? opacity : 1,
         quadPoints,
         boxes: null,
         pageIndex: pageNumber - 1,
@@ -882,10 +913,9 @@ class GdPictureHighlightEditor extends AnnotationEditor {
         id,
         deleted: false,
         popupRef,
-        items:[],
+        items: [],
       };
-    }
-    else if (data instanceof InkAnnotationElement) {
+    } else if (data instanceof InkAnnotationElement) {
       const {
         data: {
           inkLists,
@@ -900,9 +930,10 @@ class GdPictureHighlightEditor extends AnnotationEditor {
           page: { pageNumber },
         },
       } = data;
+
       initialData = data = {
         annotationType: AnnotationEditorType.GDPICTURE_HIGHLIGHT,
-        color: Array.from(color),
+        color: normalizeColor(color),
         thickness,
         inkLists,
         boxes: null,
@@ -913,15 +944,18 @@ class GdPictureHighlightEditor extends AnnotationEditor {
         deleted: false,
         popupRef,
         items: [],
-
       };
     }
 
     const { color, quadPoints, inkLists, opacity } = data;
     data.items = Array.isArray(data.items) ? data.items : [];
+
     const editor = await super.deserialize(data, parent, uiManager);
 
-    editor.color = Util.makeHexColor(...color);
+    //editor.color = Util.makeHexColor(...color);
+    const rgb255 = color.map(c => Math.round(c * 255));
+    editor.color = Util.makeHexColor(...rgb255);
+
     editor.#opacity = opacity || 1;
     if (inkLists) {
       editor.#thickness = data.thickness;
@@ -981,8 +1015,8 @@ class GdPictureHighlightEditor extends AnnotationEditor {
             d: outliner.toSVGPath(),
           },
         },
-        /* isPathUpdatable = */ true,
-        /* hasClip = */ true
+        true,
+        true
       );
       editor.#createFreeOutlines({
         highlightOutlines: outliner.getOutlines(),
@@ -996,8 +1030,10 @@ class GdPictureHighlightEditor extends AnnotationEditor {
     return editor;
   }
 
+
   /** @inheritdoc */
   serialize(isForCopying = false) {
+   
     // It doesn't make sense to copy/paste a highlight annotation.
     if (this.isEmpty() || isForCopying) {
       return null;
@@ -1031,6 +1067,11 @@ class GdPictureHighlightEditor extends AnnotationEditor {
     serialized.id = this.annotationElementId;
     return serialized;
   }
+  rebuild() {
+    this.#createOutlines();
+    this.#addToDrawLayer();
+    this.rotate(this.rotation);
+  }
 
   #hasElementChanged(serialized) {
     const { color } = this._initialData;
@@ -1049,6 +1090,9 @@ class GdPictureHighlightEditor extends AnnotationEditor {
   static canCreateNewEmptyEditor() {
     return false;
   }
+
 }
+
+
 
 export { GdPictureHighlightEditor };

@@ -169,8 +169,7 @@ class AnnotationEditorLayer {
    */
   updateMode() {
     const mode = this.#uiManager?.getMode?.();
-    console.log("🎯 updateMode called — mode:", mode);
-
+   
     if (mode === AnnotationEditorType.NONE || mode === AnnotationEditorType.DISABLE) {
       this.div.classList.add("disabled");
     } else {
@@ -607,7 +606,7 @@ class AnnotationEditorLayer {
     const id = editor.id;
 
     if (!id || this.#editors.has(id)) {
-      //console.warn("⚠️ Editor ID missing or already present:", id);
+  
       return;
     }
 
@@ -985,13 +984,30 @@ class AnnotationEditorLayer {
    * Render the main editor.
    * @param {RenderEditorLayerOptions} parameters
    */
-  render({ viewport }) {
+  render(viewport ) {
     this.viewport = viewport;
     setLayerDimensions(this.div, viewport);
-    for (const editor of this.#uiManager.getEditors(this.pageIndex)) {
-      this.add(editor);
-      editor.rebuild();
-    }
+
+    //if (annotations?.length) {
+    //  for (const annotation of annotations) {
+    //    //if (annotation.subtype === "GdPicture-AnnotationTypeRectangleHighlighter") {
+    //    //  const editor = new GdPictureHighlightEditor({
+    //    //    rect: annotation.rect,
+    //    //    color: annotation.color,
+    //    //    parent: this,
+    //    //    pageIndex: this.pageIndex,
+    //    //  });
+    //    //  this.addUndoableEditor(editor);
+    //    //  this.#uiManager.addEditor(this.pageIndex, editor); // ✅ Track it
+    //    //}
+    //  }
+    //} else {
+      for (const editor of this.#uiManager.getEditors(this.pageIndex)) {
+        this.add(editor);
+        editor.rebuild();
+      }
+    /*}*/
+
     // We're maybe rendering a layer which was invisible when we started to edit
     // so we must set the different callbacks for it.
     this.updateMode();

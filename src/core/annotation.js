@@ -73,8 +73,7 @@ import { JpegStream } from "./jpeg_stream.js";
 import { ObjectLoader } from "./object_loader.js";
 import { OperatorList } from "./operator_list.js";
 import { XFAFactory } from "./xfa/factory.js";
-/*import { createGdPictureAnnotationClass } from "./gd_annotation.js";*/
-/*import { GdPictureHighlightAnnotation } from "./gdpicture_highlight_annotation.js";*/
+
 
 
 class AnnotationFactory {
@@ -209,26 +208,7 @@ class AnnotationFactory {
       evaluatorOptions: pdfManager.evaluatorOptions,
       pageRef,
     };
-    //if (subtypeName?.includes("GdPicture")) {
-    //  return new GDPictureHighlightAnnotation(parameters);
-    //}
-
-    //if (subtypeName.startsWith("GdPicture-")) {
-    //  // ✅ Custom fallback for GdPicture annotations
-    //  return {
-    //    annotationType: 1001,
-    //    subtype,
-    //    rect: dict.map.getArray("Rect"),
-    //    color: dict.map.getPdfColorArray("C") || [1, 1, 0],
-    //    contents: dict.get("Contents"),
-    //    hasAppearance: false,
-    //    isRenderable: true,
-    //    id: ref.toString(),
-    //  };
-    //}
-
-    console.log("📦 Preparing parameters:", parameters);
-
+   
     switch (subtypeName) {
       case "Link":
         return new LinkAnnotation(parameters);
@@ -418,6 +398,17 @@ class AnnotationFactory {
           );
           break;
         case AnnotationEditorType.HIGHLIGHT:
+
+          if (!annotation.quadPoints && annotation.rect) {
+            const [x1, y1, x2, y2] = annotation.rect;
+
+            annotation.quadPoints = [
+              x1, y2, // bottom-left
+              x2, y2, // bottom-right
+              x2, y1, // top-right
+              x1, y1, // top-left
+            ];
+          }
           if (annotation.quadPoints) {
             promises.push(
               HighlightAnnotation.createNewAnnotation(xref, annotation, changes)
@@ -526,6 +517,16 @@ class AnnotationFactory {
           );
           break;
         case AnnotationEditorType.HIGHLIGHT:
+          if (!annotation.quadPoints && annotation.rect) {
+            const [x1, y1, x2, y2] = annotation.rect;
+
+            annotation.quadPoints = [
+              x1, y2, // bottom-left
+              x2, y2, // bottom-right
+              x2, y1, // top-right
+              x1, y1, // top-left
+            ];
+          }
           if (annotation.quadPoints) {
             promises.push(
               HighlightAnnotation.createNewPrintAnnotation(
@@ -4904,6 +4905,17 @@ class GDPictureHighlightAnnotation extends MarkupAnnotation {
       ]);
     }
 
+    this.data.color = null;
+    this.data.opacity = 1;
+
+    // Defer appearance parsing
+    extractAppearanceColorAndOpacity(params.dict, params.xref).then(({ color, opacity }) => {
+      this.data.color = color;
+      this.data.opacity = opacity;
+    });
+
+
+    this.data.subtype = "GdPicture-AnnotationTypeRectangleHighlighter";
     if (quadPoints) {
       const resources = this.appearance?.dict.get("Resources");
 
@@ -4940,6 +4952,7 @@ class GDPictureHighlightAnnotation extends MarkupAnnotation {
       this.data.popupRef = null;
     }
   }
+
 
   static createNewDict(annotation, xref, { apRef, ap }) {
     const { color, oldAnnotation, opacity, rect, rotation, user, quadPoints } =
@@ -5027,6 +5040,8 @@ class GDPictureHighlightAnnotation extends MarkupAnnotation {
 
     return ap;
   }
+
+
 }
 
 class UnderlineAnnotation extends MarkupAnnotation {
@@ -5396,6 +5411,26 @@ class FileAttachmentAnnotation extends MarkupAnnotation {
         : null;
   }
 }
+
+async function extractAppearanceColorAndOpacity(dict, xref) {
+  const apStream = dict.get("AP")?.get("N");
+  if (!apStream) return { color: null, opacity: 1 };
+
+  const decodedBytes = await apStream.getBytes();
+  const text = new TextDecoder("utf-8").decode(decodedBytes);
+
+  const colorMatch = text.match(/(\d+(\.\d+)?) (\d+(\.\d+)?) (\d+(\.\d+)?) rg/);
+  const opacityMatch = text.match(/(\d+(\.\d+)?) ca/);
+
+  return {
+    color: colorMatch
+      ? [parseFloat(colorMatch[1]), parseFloat(colorMatch[3]), parseFloat(colorMatch[5])]
+      : null,
+    opacity: opacityMatch ? parseFloat(opacityMatch[1]) : 1,
+  };
+}
+
+
 
 export {
   Annotation,

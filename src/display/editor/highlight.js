@@ -992,6 +992,7 @@ class HighlightEditor extends AnnotationEditor {
 
   /** @inheritdoc */
   serialize(isForCopying = false) {
+  
     // It doesn't make sense to copy/paste a highlight annotation.
     if (this.isEmpty() || isForCopying) {
       return null;

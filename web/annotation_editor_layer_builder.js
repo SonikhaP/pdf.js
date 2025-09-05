@@ -88,7 +88,6 @@ class AnnotationEditorLayerBuilder {
    */
   async render({ viewport, intent = "display", annotations = [] }) {
     if (!viewport) {
-      console.trace("🚨 render() called without viewport");
       return;
     }
     if (intent !== "display") {

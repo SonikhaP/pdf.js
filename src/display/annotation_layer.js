@@ -577,20 +577,13 @@ class AnnotationElement {
       const y = (rectTrY - trY) / height;
       const rectWidth = (trX - blX) / width;
       const rectHeight = (trY - blY) / height;
-      console.log("🔍 Quad candidate:", {
-        trX, trY, blX, blY,
-        width: trX - blX,
-        height: trY - blY
-      });
+  
 
       const minSize = 0.5; // or whatever threshold makes sense
 
       if ((trX - blX) < minSize || (trY - blY) < minSize) {
-        console.warn("⚠️ Quad too thin — skipping:", { trX, trY, blX, blY });
         continue;
       }
-
-
 
       rect.setAttribute("x", x);
       rect.setAttribute("y", y);
@@ -3379,8 +3372,7 @@ class AnnotationLayer {
       }
       elementParams.data = data;
       const element = AnnotationElementFactory.create(elementParams);
-      console.log("🔍 Full parameters:", elementParams);
-
+    
       if (!element.isRenderable) {
         continue;
       }
