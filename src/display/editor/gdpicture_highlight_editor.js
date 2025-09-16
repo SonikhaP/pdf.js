@@ -26,7 +26,6 @@ import {
 } from "./drawers/highlight.js";
 import {
   GDPictureHighlightAnnotationElement,
-  HighlightAnnotationElement,
   InkAnnotationElement,
 } from "../annotation_layer.js";
 import { noContextMenu, stopEvent } from "../display_utils.js";
@@ -75,7 +74,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
 
   static _defaultColor = null;
 
-  static _defaultOpacity = 0.8;
+  static _defaultOpacity = 0.3;
 
   static _defaultThickness = 12;
 
@@ -110,7 +109,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
       : Array.isArray(params.color)
         ? Util.makeHexColor(...params.color)
         : GdPictureHighlightEditor._defaultColor;
-
+   
     this.#thickness = params.thickness || GdPictureHighlightEditor._defaultThickness;
     this.#opacity = params.opacity || GdPictureHighlightEditor._defaultOpacity;
     this.#boxes = params.boxes || null;
@@ -161,15 +160,15 @@ class GdPictureHighlightEditor extends AnnotationEditor {
   #createOutlines() {
     const outliner = new HighlightOutliner(
       this.#boxes,
-      /* borderWidth = */ 0.001
+      /* borderWidth = */ /*0.001*/0
     );
     this.#highlightOutlines = outliner.getOutlines();
     [this.x, this.y, this.width, this.height] = this.#highlightOutlines.box;
 
     const outlinerForOutline = new HighlightOutliner(
       this.#boxes,
-      /* borderWidth = */ 0.0025,
-      /* innerMargin = */ 0.001,
+      /* borderWidth = */ /*0.0025,*/0,
+      /* innerMargin = */ /*0.001,*/0,
       this._uiManager.direction === "ltr"
     );
     this.#focusOutlines = outlinerForOutline.getOutlines();
@@ -189,7 +188,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
       /* Slightly bigger than the highlight in order to have a little
          space between the highlight and the outline. */
       this.#thickness / 2 + extraThickness,
-      /* innerMargin = */ 0.0025
+      /* innerMargin = */ /*0.0025*/0
     );
 
     if (highlightId >= 0) {
@@ -275,6 +274,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
     AnnotationEditor.initialize(l10n, uiManager);
     GdPictureHighlightEditor._defaultColor ||=
       uiManager.highlightColors?.values().next().value || "#fff066";
+    GdPictureHighlightEditor._defaultOpacity = 0.3;
   }
 
   /** @inheritdoc */
@@ -342,6 +342,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
    * @param {string} color
    */
   #updateColor(color) {
+
     const setColorAndOpacity = (col, opa) => {
       this.color = col;
       this.#opacity = opa;
@@ -352,6 +353,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
         },
       });
       this.#colorPicker?.updateColor(col);
+     
     };
     const savedColor = this.color;
     const savedOpacity = this.#opacity;
@@ -411,7 +413,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
     }
     if (this._uiManager.highlightColors) {
       this.#colorPicker = new ColorPicker({ editor: this });
-      toolbar.addColorPicker(this.#colorPicker);
+      //toolbar.addColorPicker(this.#colorPicker);
     }
     return toolbar;
   }
@@ -534,7 +536,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
         root: {
           viewBox: "0 0 1 1",
           fill: this.color,
-          "fill-opacity": this.#opacity,
+          "fill-opacity": GdPictureHighlightEditor._defaultOpacity,
         },
         rootClass: {
           highlight: true,
@@ -814,7 +816,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
       parent.scale,
       this._defaultThickness / 2,
       isLTR,
-      /* innerMargin = */ 0.001
+      /* innerMargin = */ /*0.001*/0
     );
     ({ id: this._freeHighlightId, clipPathId: this._freeHighlightClipId } =
       parent.drawLayer.draw(
@@ -823,7 +825,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
           root: {
             viewBox: "0 0 1 1",
             fill: this._defaultColor,
-            "fill-opacity": this._defaultOpacity,
+            "fill-opacity": GdPictureHighlightEditor._defaultOpacity,
           },
           rootClass: {
             highlight: true,
@@ -904,7 +906,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
       initialData = data = {
         annotationType: AnnotationEditorType.GDPICTURE_HIGHLIGHT,
         color: normalizedColor,
-        opacity: typeof opacity === "number" ? opacity : 1,
+        opacity: typeof opacity === "number" ? opacity : 0.3,
         quadPoints,
         boxes: null,
         pageIndex: pageNumber - 1,
@@ -915,7 +917,8 @@ class GdPictureHighlightEditor extends AnnotationEditor {
         popupRef,
         items: [],
       };
-    } else if (data instanceof InkAnnotationElement) {
+    }
+    else if (data instanceof InkAnnotationElement) {
       const {
         data: {
           inkLists,
@@ -934,6 +937,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
       initialData = data = {
         annotationType: AnnotationEditorType.GDPICTURE_HIGHLIGHT,
         color: normalizeColor(color),
+        opacity: GdPictureHighlightEditor._defaultOpacity,
         thickness,
         inkLists,
         boxes: null,
@@ -946,7 +950,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
         items: [],
       };
     }
-
+    
     const { color, quadPoints, inkLists, opacity } = data;
     data.items = Array.isArray(data.items) ? data.items : [];
 
@@ -956,7 +960,8 @@ class GdPictureHighlightEditor extends AnnotationEditor {
     const rgb255 = color.map(c => Math.round(c * 255));
     editor.color = Util.makeHexColor(...rgb255);
 
-    editor.#opacity = opacity || 1;
+    editor.#opacity = opacity || 0.3;
+   
     if (inkLists) {
       editor.#thickness = data.thickness;
     }
@@ -969,12 +974,23 @@ class GdPictureHighlightEditor extends AnnotationEditor {
     if (quadPoints) {
       const boxes = (editor.#boxes = []);
       for (let i = 0; i < quadPoints.length; i += 8) {
+        const round = (v) => +v.toFixed(2);
+        const xs = [round(quadPoints[i]), round(quadPoints[i + 2]), round(quadPoints[i + 4]), round(quadPoints[i + 6])];
+        const ys = [round(quadPoints[i + 1]), round(quadPoints[i + 3]), round(quadPoints[i + 5]), round(quadPoints[i + 7])];
+
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+
         boxes.push({
-          x: (quadPoints[i] - pageX) / pageWidth,
-          y: 1 - (quadPoints[i + 1] - pageY) / pageHeight,
-          width: (quadPoints[i + 2] - quadPoints[i]) / pageWidth,
-          height: (quadPoints[i + 1] - quadPoints[i + 5]) / pageHeight,
+          x: +((minX - pageX) / pageWidth).toFixed(4),
+          y: +(1 - (maxY - pageY) / pageHeight).toFixed(4),
+          width: +((maxX - minX) / pageWidth).toFixed(4),
+          height: +((maxY - minY) / pageHeight).toFixed(4),
         });
+
+
       }
       editor.#createOutlines();
       editor.#addToDrawLayer();
@@ -992,14 +1008,14 @@ class GdPictureHighlightEditor extends AnnotationEditor {
         1,
         editor.#thickness / 2,
         true,
-        0.001
+        /*0.001*/0
       );
       for (let i = 0, ii = points.length; i < ii; i += 2) {
         point.x = points[i] - pageX;
         point.y = pageHeight - (points[i + 1] - pageY);
         outliner.add(point);
       }
-      const { id, clipPathId } = parent.drawLayer.draw(
+       const { id, clipPathId } = parent.drawLayer.draw(
         {
           bbox: [0, 0, 1, 1],
           root: {
@@ -1026,7 +1042,7 @@ class GdPictureHighlightEditor extends AnnotationEditor {
       editor.#addToDrawLayer();
       editor.rotate(editor.parentRotation);
     }
-
+  
     return editor;
   }
 

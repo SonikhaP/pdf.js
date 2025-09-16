@@ -74,7 +74,7 @@ class HighlightEditor extends AnnotationEditor {
 
   static _defaultColor = null;
 
-  static _defaultOpacity = 1;
+  static _defaultOpacity = 0.3;
 
   static _defaultThickness = 12;
 
@@ -155,15 +155,15 @@ class HighlightEditor extends AnnotationEditor {
   #createOutlines() {
     const outliner = new HighlightOutliner(
       this.#boxes,
-      /* borderWidth = */ 0.001
+      /* borderWidth = */ /*0.001*/0
     );
     this.#highlightOutlines = outliner.getOutlines();
     [this.x, this.y, this.width, this.height] = this.#highlightOutlines.box;
 
     const outlinerForOutline = new HighlightOutliner(
       this.#boxes,
-      /* borderWidth = */ 0.0025,
-      /* innerMargin = */ 0.001,
+      /* borderWidth = */ /*0.0025,*/0,
+      /* innerMargin = */ /*0.001,*/0,
       this._uiManager.direction === "ltr"
     );
     this.#focusOutlines = outlinerForOutline.getOutlines();
@@ -178,12 +178,12 @@ class HighlightEditor extends AnnotationEditor {
 
   #createFreeOutlines({ highlightOutlines, highlightId, clipPathId }) {
     this.#highlightOutlines = highlightOutlines;
-    const extraThickness = 1.5;
+    const extraThickness =/* 1.5;*/0;
     this.#focusOutlines = highlightOutlines.getNewOutline(
       /* Slightly bigger than the highlight in order to have a little
          space between the highlight and the outline. */
       this.#thickness / 2 + extraThickness,
-      /* innerMargin = */ 0.0025
+      /* innerMargin = */ /*0.0025*/0
     );
 
     if (highlightId >= 0) {
@@ -269,6 +269,7 @@ class HighlightEditor extends AnnotationEditor {
     AnnotationEditor.initialize(l10n, uiManager);
     HighlightEditor._defaultColor ||=
       uiManager.highlightColors?.values().next().value || "#fff066";
+    HighlightEditor._defaultOpacity = 0.3;
   }
 
   /** @inheritdoc */
@@ -342,7 +343,7 @@ class HighlightEditor extends AnnotationEditor {
       this.parent?.drawLayer.updateProperties(this.#id, {
         root: {
           fill: col,
-          "fill-opacity": opa,
+          "fill-opacity": getOpacityForColor(opa),
         },
       });
       this.#colorPicker?.updateColor(col);
@@ -405,7 +406,7 @@ class HighlightEditor extends AnnotationEditor {
     }
     if (this._uiManager.highlightColors) {
       this.#colorPicker = new ColorPicker({ editor: this });
-      toolbar.addColorPicker(this.#colorPicker);
+      //toolbar.addColorPicker(this.#colorPicker);
     }
     return toolbar;
   }
@@ -522,13 +523,15 @@ class HighlightEditor extends AnnotationEditor {
     if (this.#id !== null) {
       return;
     }
+   
     ({ id: this.#id, clipPathId: this.#clipPathId } = parent.drawLayer.draw(
       {
         bbox: this.#highlightOutlines.box,
+       
         root: {
           viewBox: "0 0 1 1",
           fill: this.color,
-          "fill-opacity": this.#opacity,
+          "fill-opacity": getOpacityForColor(this.color),
         },
         rootClass: {
           highlight: true,
@@ -626,7 +629,7 @@ class HighlightEditor extends AnnotationEditor {
     highlightDiv.style.clipPath = this.#clipPathId;
     const [parentWidth, parentHeight] = this.parentDimensions;
     this.setDims(this.width * parentWidth, this.height * parentHeight);
-
+    
     bindEvents(this, this.#highlightDiv, ["pointerover", "pointerleave"]);
     this.enableEditing();
 
@@ -808,7 +811,7 @@ class HighlightEditor extends AnnotationEditor {
       parent.scale,
       this._defaultThickness / 2,
       isLTR,
-      /* innerMargin = */ 0.001
+      /* innerMargin = */ /*0.001*/0
     );
     ({ id: this._freeHighlightId, clipPathId: this._freeHighlightClipId } =
       parent.drawLayer.draw(
@@ -817,7 +820,7 @@ class HighlightEditor extends AnnotationEditor {
           root: {
             viewBox: "0 0 1 1",
             fill: this._defaultColor,
-            "fill-opacity": this._defaultOpacity,
+            "fill-opacity": getOpacityForColor(this._defaultColor),
           },
           rootClass: {
             highlight: true,
@@ -872,7 +875,7 @@ class HighlightEditor extends AnnotationEditor {
       initialData = data = {
         annotationType: AnnotationEditorType.HIGHLIGHT,
         color: Array.from(color),
-        opacity,
+        opacity: typeof opacity === "number" ? opacity : 0.3,
         quadPoints,
         boxes: null,
         pageIndex: pageNumber - 1,
@@ -900,6 +903,7 @@ class HighlightEditor extends AnnotationEditor {
       initialData = data = {
         annotationType: AnnotationEditorType.HIGHLIGHT,
         color: Array.from(color),
+        opacity: this._defaultOpacity,
         thickness,
         inkLists,
         boxes: null,
@@ -909,6 +913,7 @@ class HighlightEditor extends AnnotationEditor {
         id,
         deleted: false,
         popupRef,
+        items: [],
       };
     }
 
@@ -916,7 +921,7 @@ class HighlightEditor extends AnnotationEditor {
     const editor = await super.deserialize(data, parent, uiManager);
 
     editor.color = Util.makeHexColor(...color);
-    editor.#opacity = opacity || 1;
+    editor.#opacity = opacity || 0.3;
     if (inkLists) {
       editor.#thickness = data.thickness;
     }
@@ -952,7 +957,7 @@ class HighlightEditor extends AnnotationEditor {
         1,
         editor.#thickness / 2,
         true,
-        0.001
+        /*0.001*/0
       );
       for (let i = 0, ii = points.length; i < ii; i += 2) {
         point.x = points[i] - pageX;
@@ -965,7 +970,7 @@ class HighlightEditor extends AnnotationEditor {
           root: {
             viewBox: "0 0 1 1",
             fill: editor.color,
-            "fill-opacity": editor._defaultOpacity,
+            "fill-opacity": getOpacityForColor(editor.color),
           },
           rootClass: {
             highlight: true,
@@ -1043,6 +1048,21 @@ class HighlightEditor extends AnnotationEditor {
   static canCreateNewEmptyEditor() {
     return false;
   }
+
+
 }
+
+function getOpacityForColor(color) {
+  if (Array.isArray(color) || color instanceof Uint8ClampedArray) {
+    return color[0] === 0 && color[1] === 0 && color[2] === 0 ? 1 : _defaultOpacity;
+  }
+  if (typeof color === "string") {
+    const hex = color.toLowerCase();
+    return hex === "#000000" || hex === "black" ? 1 : _defaultOpacity;
+  }
+  return _defaultOpacity;
+}
+
+
 
 export { HighlightEditor };

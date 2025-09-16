@@ -317,6 +317,14 @@ class PDFLinkService {
           query: phrase ? query : query.match(/\S+/g),
         });
       }
+      if (params.has("toolbareditor")) {
+        //console.log("toolbareditor: " + params.get("toolbareditor"));
+        if (params.get("toolbareditor") === "0") {
+          const editorStempDiv = document.getElementById("editorStamp");
+          editorStempDiv.style.display = "none"; // Hidden
+          editorStempDiv.setAttribute("aria-hidden", "true");
+        }
+      }
       // borrowing syntax from "Parameters for Opening PDF Files"
       if (params.has("page")) {
         pageNumber = params.get("page") | 0 || 1;

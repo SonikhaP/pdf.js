@@ -82,18 +82,18 @@ class Toolbar {
           },
         },
       },
-      {
-        element: options.editorHighlightButton,
-        eventName: "switchannotationeditormode",
-        eventDetails: {
-          get mode() {
-            const { classList } = options.editorHighlightButton;
-            return classList.contains("toggled")
-              ? AnnotationEditorType.NONE
-              : AnnotationEditorType.HIGHLIGHT;
-          },
-        },
-      },
+      //{
+      //  element: options.editorHighlightButton,
+      //  eventName: "switchannotationeditormode",
+      //  eventDetails: {
+      //    get mode() {
+      //      const { classList } = options.editorHighlightButton;
+      //      return classList.contains("toggled")
+      //        ? AnnotationEditorType.NONE
+      //        : AnnotationEditorType.HIGHLIGHT;
+      //    },
+      //  },
+      //},
       {
         element: options.editorInkButton,
         eventName: "switchannotationeditormode",

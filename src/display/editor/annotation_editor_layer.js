@@ -189,12 +189,12 @@ class AnnotationEditorLayer {
         this.enableClick();
         break;
       case AnnotationEditorType.HIGHLIGHT:
-        this.enableTextSelection();
+        this.disableTextSelection();
         this.togglePointerEvents(false);
         this.disableClick();
         break;
       case AnnotationEditorType.GDPICTURE_HIGHLIGHT:
-        this.enableTextSelection();
+        this.disableTextSelection();
         this.togglePointerEvents(false);
         this.disableClick();
         break;
@@ -612,7 +612,8 @@ class AnnotationEditorLayer {
 
     editor.render();                           // ✅ Create editor div
     this.div.appendChild(editor.div);          // ✅ Add to DOM
-    editor.onceAdded(true);                    // ✅ Wire up drag, resize, focus
+    //editor.onceAdded(true);                    // ✅ Wire up drag, resize, focus
+    editor.onceAdded({ drag: true, resize: false, focus: false });
     this.#editors.set(id, editor);             // ✅ Track in map
     this.#uiManager?.setActiveEditor(editor);  // ✅ Optional: for selection
    
@@ -827,7 +828,7 @@ class AnnotationEditorLayer {
   pointerdown(event) {
     if (this.#uiManager.getMode() === AnnotationEditorType.HIGHLIGHT ||
       this.#uiManager.getMode() === AnnotationEditorType.GDPICTURE_HIGHLIGHT) {
-      this.enableTextSelection();
+      this.disableTextSelection();
     }
     if (this.#hadPointerDown) {
       // It's possible to have a second pointerdown event before a pointerup one

@@ -190,8 +190,8 @@ class AnnotationFactory {
     } else {
       subtypeName = subtype?.toString();
     }
-  
 
+   
     // Return the right annotation object based on the subtype and field type.
     const parameters = {
       xref,
@@ -267,6 +267,9 @@ class AnnotationFactory {
         return new HighlightAnnotation(parameters);
 
       case "GdPicture-AnnotationTypeRectangleHighlighter":
+        return new GDPictureHighlightAnnotation(parameters);
+
+      case "GdPicture-AnnotationTypeRectangle":
         return new GDPictureHighlightAnnotation(parameters);
 
       case "Underline":
@@ -401,13 +404,21 @@ class AnnotationFactory {
 
           if (!annotation.quadPoints && annotation.rect) {
             const [x1, y1, x2, y2] = annotation.rect;
-
+            const left = Math.min(x1, x2);
+            const right = Math.max(x1, x2);
+            const bottom = Math.min(y1, y2);
+            const top = Math.max(y1, y2);
             annotation.quadPoints = [
-              x1, y2, // bottom-left
-              x2, y2, // bottom-right
-              x2, y1, // top-right
-              x1, y1, // top-left
+              //x1, y2, // bottom-left
+              //x2, y2, // bottom-right
+              //x2, y1, // top-right
+              //x1, y1, // top-left
+              left, top,   // top-left
+              right, top,  // top-right
+              left, bottom,// bottom-left
+              right, bottom// bottom-right
             ];
+            
           }
           if (annotation.quadPoints) {
             promises.push(
@@ -423,11 +434,19 @@ class AnnotationFactory {
           if (!annotation.quadPoints && annotation.rect) {
             const [x1, y1, x2, y2] = annotation.rect;
 
+            const left = Math.min(x1, x2);
+            const right = Math.max(x1, x2);
+            const bottom = Math.min(y1, y2);
+            const top = Math.max(y1, y2);
             annotation.quadPoints = [
-              x1, y2, // bottom-left
-              x2, y2, // bottom-right
-              x2, y1, // top-right
-              x1, y1, // top-left
+              //x1, y2, // bottom-left
+              //x2, y2, // bottom-right
+              //x2, y1, // top-right
+              //x1, y1, // top-left
+              left, top,   // top-left
+              right, top,  // top-right
+              left, bottom,// bottom-left
+              right, bottom// bottom-right
             ];
           }
 
@@ -520,11 +539,19 @@ class AnnotationFactory {
           if (!annotation.quadPoints && annotation.rect) {
             const [x1, y1, x2, y2] = annotation.rect;
 
+            const left = Math.min(x1, x2);
+            const right = Math.max(x1, x2);
+            const bottom = Math.min(y1, y2);
+            const top = Math.max(y1, y2);
             annotation.quadPoints = [
-              x1, y2, // bottom-left
-              x2, y2, // bottom-right
-              x2, y1, // top-right
-              x1, y1, // top-left
+              //x1, y2, // bottom-left
+              //x2, y2, // bottom-right
+              //x2, y1, // top-right
+              //x1, y1, // top-left
+              left, top,   // top-left
+              right, top,  // top-right
+              left, bottom,// bottom-left
+              right, bottom// bottom-right
             ];
           }
           if (annotation.quadPoints) {
@@ -554,12 +581,19 @@ class AnnotationFactory {
         case AnnotationEditorType.GDPICTURE_HIGHLIGHT:
           if (!annotation.quadPoints && annotation.rect) {
             const [x1, y1, x2, y2] = annotation.rect;
-
+            const left = Math.min(x1, x2);
+            const right = Math.max(x1, x2);
+            const bottom = Math.min(y1, y2);
+            const top = Math.max(y1, y2);
             annotation.quadPoints = [
-              x1, y2, // bottom-left
-              x2, y2, // bottom-right
-              x2, y1, // top-right
-              x1, y1, // top-left
+              //x1, y2, // bottom-left
+              //x2, y2, // bottom-right
+              //x2, y1, // top-right
+              //x1, y1, // top-left
+              left, top,   // top-left
+              right, top,  // top-right
+              left, bottom,// bottom-left
+              right, bottom// bottom-right
             ];
           }
           if (annotation.quadPoints) {
@@ -716,8 +750,11 @@ function getQuadPoints(dict, rect) {
     // top right, bottom right and bottom left. To avoid inconsistency and
     // broken rendering, we normalize all lists to put the quadpoints in the
     // same standard order (see https://stackoverflow.com/a/10729881).
-    newQuadPoints.set([minX, maxY, maxX, maxY, minX, minY, maxX, minY], i);
+    //newQuadPoints.set([minX, maxY, maxX, maxY, minX, minY, maxX, minY], i);
+    newQuadPoints.set([x1, y1, x2, y2, x3, y3, x4, y4], i);
+
   }
+
   return newQuadPoints;
 }
 
@@ -4749,7 +4786,7 @@ class HighlightAnnotation extends MarkupAnnotation {
     this.data.isEditable = !this.data.noHTML;
     // We want to be able to add mouse listeners to the annotation.
     this.data.noHTML = false;
-    this.data.opacity = dict.get("CA") || 1;
+    this.data.opacity = dict.get("CA") || 0.3;
 
     const quadPoints = (this.data.quadPoints = getQuadPoints(dict, null));
     if (quadPoints) {
@@ -4886,7 +4923,7 @@ class GDPictureHighlightAnnotation extends MarkupAnnotation {
     this.data.isEditable = !this.data.noHTML;
     // We want to be able to add mouse listeners to the annotation.
     this.data.noHTML = false;
-    this.data.opacity = dict.get("CA") || 1;
+    this.data.opacity = dict.get("CA") || 0.3;
 
     const rawQuadPoints = dict.getArray("QuadPoints");
 
@@ -4897,16 +4934,26 @@ class GDPictureHighlightAnnotation extends MarkupAnnotation {
     this.data.quadPoints = quadPoints;
     if (!this.data.quadPoints && this.data.rect) {
       const [x1, y1, x2, y2] = this.data.rect;
+      const left = Math.min(x1, x2);
+      const right = Math.max(x1, x2);
+      const bottom = Math.min(y1, y2);
+      const top = Math.max(y1, y2);
+      //this.data.quadPoints = Float32Array.from([
+      //  x1, y2, // top-left
+      //  x2, y2, // top-right
+      //  x1, y1, // bottom-right
+      //  x2, y1  // bottom-left
+      //]);
       this.data.quadPoints = Float32Array.from([
-        x1, y2, // top-left
-        x2, y2, // top-right
-        x1, y1, // bottom-right
-        x2, y1  // bottom-left
+        left, top,   // top-left
+        right, top,  // top-right
+        left, bottom,// bottom-left
+        right, bottom// bottom-right
       ]);
     }
 
     this.data.color = null;
-    this.data.opacity = 1;
+    this.data.opacity = 0.3;
 
     // Defer appearance parsing
     extractAppearanceColorAndOpacity(params.dict, params.xref).then(({ color, opacity }) => {
@@ -4915,7 +4962,7 @@ class GDPictureHighlightAnnotation extends MarkupAnnotation {
     });
 
 
-    this.data.subtype = "GdPicture-AnnotationTypeRectangleHighlighter";
+    //this.data.subtype = "GdPicture-AnnotationTypeRectangleHighlighter";
     if (quadPoints) {
       const resources = this.appearance?.dict.get("Resources");
 
@@ -5414,7 +5461,7 @@ class FileAttachmentAnnotation extends MarkupAnnotation {
 
 async function extractAppearanceColorAndOpacity(dict, xref) {
   const apStream = dict.get("AP")?.get("N");
-  if (!apStream) return { color: null, opacity: 1 };
+  if (!apStream) return { color: null, opacity: 0.5 };
 
   const decodedBytes = await apStream.getBytes();
   const text = new TextDecoder("utf-8").decode(decodedBytes);
@@ -5426,7 +5473,7 @@ async function extractAppearanceColorAndOpacity(dict, xref) {
     color: colorMatch
       ? [parseFloat(colorMatch[1]), parseFloat(colorMatch[3]), parseFloat(colorMatch[5])]
       : null,
-    opacity: opacityMatch ? parseFloat(opacityMatch[1]) : 1,
+    opacity: opacityMatch ? parseFloat(opacityMatch[1]) : 0.5,
   };
 }
 

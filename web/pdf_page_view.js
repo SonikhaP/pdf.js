@@ -349,8 +349,7 @@ class PDFPageView extends BasePDFPageView {
     });
     this.#setDimensions();
     this.reset();
-    // Inside setPdfPage
-    console.log("📐 Viewport set:", this.viewport);
+    
   }
 
   destroy() {
@@ -401,8 +400,7 @@ class PDFPageView extends BasePDFPageView {
 
   async #renderAnnotationEditorLayer() {
     // Inside #renderAnnotationEditorLayer
-    console.log("🧭 Using viewport from this.viewport:", this.viewport);
-
+    
     let error = null;
     try {
       await this.annotationEditorLayer.render({

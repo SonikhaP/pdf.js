@@ -239,14 +239,15 @@ class AnnotationElement {
       },
     } = this;
     currentRect?.splice(0, 4, ...rect);
-    style.left = `${(100 * (rect[0] - pageX)) / pageWidth}%`;
-    style.top = `${(100 * (pageHeight - rect[3] + pageY)) / pageHeight}%`;
+    style.left = `${((100 * (rect[0] - pageX)) / pageWidth).toFixed(2) }%`;
+    style.top = `${((100 * (pageHeight - rect[3] + pageY)) / pageHeight).toFixed(2)}%`;
     if (rotation === 0) {
-      style.width = `${(100 * /* width = */ (rect[2] - rect[0])) / pageWidth}%`;
-      style.height = `${(100 * /* height = */ (rect[3] - rect[1])) / pageHeight}%`;
+      style.width = `${((100 * /* width = */ (rect[2] - rect[0])) / pageWidth).toFixed(1) }%`;
+      style.height = `${((100 * /* height = */ (rect[3] - rect[1])) / pageHeight).toFixed(1)}%`;
     } else {
       this.setRotation(rotation);
     }
+   
   }
 
   /**
@@ -356,13 +357,13 @@ class AnnotationElement {
     ]);
     const { pageWidth, pageHeight, pageX, pageY } = viewport.rawDims;
 
-    style.left = `${(100 * (rect[0] - pageX)) / pageWidth}%`;
-    style.top = `${(100 * (rect[1] - pageY)) / pageHeight}%`;
+    style.left = `${((100 * (rect[0] - pageX)) / pageWidth).toFixed(2)}%`;
+    style.top = `${ ((100 * (rect[1] - pageY)) / pageHeight).toFixed(2)}%`;
 
     const { rotation } = data;
     if (data.hasOwnCanvas || rotation === 0) {
-      style.width = `${(100 * width) / pageWidth}%`;
-      style.height = `${(100 * height) / pageHeight}%`;
+      style.width = `${((100 * width) / pageWidth).toFixed(1)}%`;
+      style.height = `${((100 * height) / pageHeight).toFixed(1) }%`;
     } else {
       this.setRotation(rotation, container);
     }
@@ -380,8 +381,8 @@ class AnnotationElement {
     if (angle % 180 !== 0) {
       [width, height] = [height, width];
     }
-    container.style.width = `${(100 * width) / pageWidth}%`;
-    container.style.height = `${(100 * height) / pageHeight}%`;
+    container.style.width = `${((100 * width) / pageWidth).toFixed(1)}%`;
+    container.style.height = `${((100 * height) / pageHeight).toFixed(1)}%`;
 
     container.setAttribute("data-main-rotation", (360 - angle) % 360);
   }
@@ -587,11 +588,11 @@ class AnnotationElement {
 
       rect.setAttribute("x", x);
       rect.setAttribute("y", y);
-      rect.setAttribute("width", rectWidth);
-      rect.setAttribute("height", rectHeight);
+      rect.setAttribute("width", rectWidth.toFixed(1));
+      rect.setAttribute("height", rectHeight.toFixed(1));
       clipPath.append(rect);
       svgBuffer?.push(
-        `<rect vector-effect="non-scaling-stroke" x="${x}" y="${y}" width="${rectWidth}" height="${rectHeight}"/>`
+        `<rect vector-effect="non-scaling-stroke" x="${x}" y="${y}" width="${rectWidth.toFixed(1)}" height="${rectHeight.toFixed(1)}"/>`
       );
     }
 
@@ -732,6 +733,13 @@ class AnnotationElement {
   _editOnDoubleClick() {
     if (!this._isEditable) {
       return;
+    }
+
+  
+    const isBlack = Array.from(this.data.color).every(v => v === 0);
+
+    if (isBlack) {
+      return; // Disable editing for black highlights
     }
     const {
       annotationEditorType: mode,
@@ -2498,8 +2506,8 @@ class PopupElement {
     ];
 
     const { style } = this.#container;
-    style.left = `${this.#position[0]}%`;
-    style.top = `${this.#position[1]}%`;
+    style.left = `${this.#position[0].toFixed(2)}%`;
+    style.top = `${this.#position[1].toFixed(2)}%`;
   }
 
   /**
@@ -3040,45 +3048,9 @@ class GDPictureHighlightAnnotationElement extends AnnotationElement {
 
     return this.container;
   }
-  //render() {
-  //  const container = document.createElement("section");
-  //  container.className = "gdPictureHighlighter";
-  //  container.setAttribute("data-annotation-id", this.data.id);
-  //  container.style.left = `${this.data.rect[0]}px`;
-  //  container.style.top = `${this.data.rect[1]}px`;
-  //  container.style.width = `${this.data.rect[2] - this.data.rect[0]}px`;
-  //  container.style.height = `${this.data.rect[3] - this.data.rect[1]}px`;
-  //  container.style.backgroundColor = `rgba(${this.data.color[0] * 255}, ${this.data.color[1] * 255}, ${this.data.color[2] * 255}, 0.5)`;
-  //  return container;
-  //}
+ 
 }
 
-//class GdPictureRectangleHighlighterAnnotationElement extends AnnotationElement {
-//  constructor(parameters) {
-//    super(parameters, {
-//      isRenderable: true,
-//      ignoreBorder: true,
-//    });
-//    this.annotationEditorType = AnnotationEditorType.HIGHLIGHT;
-
-//  }
-
-//  render() {
-//    if (!this.data.popupRef && this.hasPopupData) {
-//      this._createPopup();
-//    }
-
-//    this.container.classList.add("gdPictureHighlighter");
-
-//    // Apply custom styles
-//    this.container.style.backgroundColor = "rgba(255, 255, 0, 0.5)";
-//    this.container.style.borderRadius = "2px";
-
-//    this._editOnDoubleClick();
-
-//    return this.container;
-//  }
-//}
 
 class UnderlineAnnotationElement extends AnnotationElement {
   constructor(parameters) {

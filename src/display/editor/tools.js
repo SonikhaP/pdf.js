@@ -1248,11 +1248,12 @@ class AnnotationEditorUIManager {
   }
 
   #onSelectEnd(methodOfCreation = "") {
-    if (this.#mode === AnnotationEditorType.HIGHLIGHT) {
-      this.highlightSelection(methodOfCreation);
-    } else if (this.#enableHighlightFloatingButton) {
-      this.#displayHighlightToolbar();
-    }
+    //if (this.#mode === AnnotationEditorType.HIGHLIGHT) {
+    //  this.highlightSelection(methodOfCreation);
+    //} else
+    //  if (this.#enableHighlightFloatingButton) {
+    //  this.#displayHighlightToolbar();
+    //}
   }
 
   #addSelectionListener() {
@@ -1539,9 +1540,9 @@ class AnnotationEditorUIManager {
       case "selectAll":
         this[name]();
         break;
-      case "highlightSelection":
-        this.highlightSelection("context_menu");
-        break;
+      //case "highlightSelection":
+      //  this.highlightSelection("context_menu");
+      //  break;
     }
   }
 
@@ -2439,7 +2440,6 @@ class AnnotationEditorUIManager {
     // Optionally dispatch an event if needed
     this._eventBus?.dispatch("annotationeditormodechanged", { mode });
 
-    console.log("🧠 Editor mode set to:", mode);
   }
 
   get imageManager() {

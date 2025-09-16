@@ -111,9 +111,9 @@ export async function addStaticStamp({
   annotationEditorLayer.addUndoableEditor(stamp);
   stamp.select();
 
-  // ✅ Confirm
-  console.log("✅ Stamp added");
-  console.log("Editor count:", annotationEditorLayer.editors?.size);
+  //// ✅ Confirm
+  //console.log("✅ Stamp added");
+  //console.log("Editor count:", annotationEditorLayer.editors?.size);
 }
 
 const stampIdCounters = {

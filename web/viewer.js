@@ -297,9 +297,7 @@ function webViewerLoad() {
     const uiManager = PDFViewerApplication?.pdfViewer?.annotationEditorUIManager;
     if (uiManager) {
       uiManager.setMode(AnnotationEditorType.GDPICTURE_HIGHLIGHT);
-      console.log("🟢 Editor mode set to:", AnnotationEditorType.GDPICTURE_HIGHLIGHT);
-    } else {
-      console.warn("⚠️ UI Manager not available.");
+      
     }
   });
 

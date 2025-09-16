@@ -724,9 +724,11 @@ class AnnotationEditor {
   setDims(width, height) {
     const [parentWidth, parentHeight] = this.parentDimensions;
     const { style } = this.div;
-    style.width = `${((100 * width) / parentWidth).toFixed(2)}%`;
+
+    style.width = `${((100 * width) / parentWidth).toFixed(1)}%`;
+   
     if (!this.#keepAspectRatio) {
-      style.height = `${((100 * height) / parentHeight).toFixed(2)}%`;
+      style.height = `${((100 * height) / parentHeight).toFixed(1)}%`;
     }
   }
 
@@ -741,10 +743,10 @@ class AnnotationEditor {
 
     const [parentWidth, parentHeight] = this.parentDimensions;
     if (!widthPercent) {
-      style.width = `${((100 * parseFloat(width)) / parentWidth).toFixed(2)}%`;
+      style.width = `${((100 * parseFloat(width)) / parentWidth).toFixed(1)}%`;
     }
     if (!this.#keepAspectRatio && !heightPercent) {
-      style.height = `${((100 * parseFloat(height)) / parentHeight).toFixed(2)}%`;
+      style.height = `${((100 * parseFloat(height)) / parentHeight).toFixed(1)}%`;
     }
   }
 
@@ -971,8 +973,10 @@ class AnnotationEditor {
     const point = getPoint(savedWidth, savedHeight);
     const oppositePoint = getOpposite(savedWidth, savedHeight);
     let transfOppositePoint = transf(...oppositePoint);
-    const oppositeX = AnnotationEditor._round(savedX + transfOppositePoint[0]);
-    const oppositeY = AnnotationEditor._round(savedY + transfOppositePoint[1]);
+    //const oppositeX = AnnotationEditor._round(savedX + transfOppositePoint[0]);
+    //const oppositeY = AnnotationEditor._round(savedY + transfOppositePoint[1]);
+    const oppositeX = (AnnotationEditor.savedX + transfOppositePoint[0]).toFixed(2);
+    const oppositeY = (AnnotationEditor.savedY + transfOppositePoint[1]).toFixed(2);
     let ratioX = 1;
     let ratioY = 1;
 
@@ -1024,8 +1028,10 @@ class AnnotationEditor {
         ) / savedHeight;
     }
 
-    const newWidth = AnnotationEditor._round(savedWidth * ratioX);
-    const newHeight = AnnotationEditor._round(savedHeight * ratioY);
+    //const newWidth = AnnotationEditor._round(savedWidth * ratioX);
+    //const newHeight = AnnotationEditor._round(savedHeight * ratioY);
+    const newWidth = (AnnotationEditor.savedWidth * ratioX).toFixed(1);
+    const newHeight = (AnnotationEditor.savedHeight * ratioY).toFixed(1);
     transfOppositePoint = transf(...getOpposite(newWidth, newHeight));
     const newX = oppositeX - transfOppositePoint[0];
     const newY = oppositeY - transfOppositePoint[1];
@@ -1166,12 +1172,8 @@ class AnnotationEditor {
 
     const [parentWidth, parentHeight] = this.parentDimensions;
     if (this.parentRotation % 180 !== 0) {
-      div.style.maxWidth = `${((100 * parentHeight) / parentWidth).toFixed(
-        2
-      )}%`;
-      div.style.maxHeight = `${((100 * parentWidth) / parentHeight).toFixed(
-        2
-      )}%`;
+      div.style.maxWidth = `${((100 * parentHeight) / parentWidth).toFixed(1)}%`;
+      div.style.maxHeight = `${((100 * parentWidth) / parentHeight).toFixed(1)}%`;
     }
 
     const [tx, ty] = this.getInitialTranslation();
@@ -1236,16 +1238,20 @@ class AnnotationEditor {
       minWidth / savedWidth,
       minHeight / savedHeight
     );
-    const newWidth = AnnotationEditor._round(savedWidth * factor);
-    const newHeight = AnnotationEditor._round(savedHeight * factor);
+    //const newWidth = AnnotationEditor._round(savedWidth * factor);
+    //const newHeight = AnnotationEditor._round(savedHeight * factor);
+    const newWidth = (AnnotationEditor.savedWidth * factor).toFixed(1);
+    const newHeight = (AnnotationEditor.savedHeight * factor).toFixed(1);
     if (newWidth === savedWidth && newHeight === savedHeight) {
       return;
     }
 
     this.#initialRect ||= [savedX, savedY, savedWidth, savedHeight];
     const transfCenterPoint = transf(savedWidth / 2, savedHeight / 2);
-    const centerX = AnnotationEditor._round(savedX + transfCenterPoint[0]);
-    const centerY = AnnotationEditor._round(savedY + transfCenterPoint[1]);
+    //const centerX = AnnotationEditor._round(savedX + transfCenterPoint[0]);
+    //const centerY = AnnotationEditor._round(savedY + transfCenterPoint[1]);
+    const centerX = (AnnotationEditor.savedX + transfCenterPoint[0]).toFixed(2);
+    const centerY = (AnnotationEditor.savedY + transfCenterPoint[1]).toFixed(2);
     const newTransfCenterPoint = transf(newWidth / 2, newHeight / 2);
 
     this.x = centerX - newTransfCenterPoint[0];
@@ -1647,6 +1653,7 @@ class AnnotationEditor {
     editor.width = width / pageWidth;
     editor.height = height / pageHeight;
 
+  
     return editor;
   }
 
@@ -1852,23 +1859,31 @@ class AnnotationEditor {
     if (this.isSelected && this._editToolbar) {
       return;
     }
+
     this.isSelected = true;
-    //this.makeResizable();// Sonikha commented it manually 
     this.div?.classList.add("selectedEditor");
+
+    // Use direct color property
+    const hexColor = this.color?.toLowerCase();
+    const isBlack = hexColor === "#000000" || hexColor === "black";
+
+    if (isBlack) {
+      return; // Skip showing toolbar for black highlights
+    }
+
     if (!this._editToolbar) {
       this.addEditToolbar().then(() => {
         if (this.div?.classList.contains("selectedEditor")) {
-          // The editor can have been unselected while we were waiting for the
-          // edit toolbar to be created, hence we want to be sure that this
-          // editor is still selected.
           this._editToolbar?.show();
         }
       });
       return;
     }
+
     this._editToolbar?.show();
-    // this.#altText?.toggleAltTextBadge(false);// Sonikha commented it manually 
   }
+
+
 
   /**
    * Unselect this editor.
